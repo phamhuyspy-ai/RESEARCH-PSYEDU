@@ -6,7 +6,6 @@
  * - Automatic Folder and Spreadsheet Provisioning
  * - Centralized Schema Management
  * - Robust Scoring Engine (Reverse, Weight, Groups)
- * - SPSS Order Management
  * - Email Notifications & Logging
  */
 
@@ -34,7 +33,11 @@ const APP_CONFIG = {
 function doPost(e) {
   try {
     const request = JSON.parse(e.postData.contents);
-    const { action, payload } = request;
+    const action = request.action;
+    const payload = request.payload || {}; // Default to empty object if missing
+    
+    // Log action for debugging
+    console.log(`Processing action: ${action}`);
     
     // Ensure workspace exists
     getORCreateMasterSS();
@@ -93,10 +96,6 @@ function doPost(e) {
         result = getResponses(payload); 
         break;
         
-      // --- SPSS SERVICE ---
-      case 'submit_spss_order':
-        result = handleSPSSOrder(payload);
-        break;
       case 'save_settings':
         result = saveSettings(payload);
         break;
@@ -135,29 +134,41 @@ function doGet(e) {
 // ==========================================
 
 function getORCreateMasterSS() {
-  const props = PropertiesService.getScriptProperties();
-  let ssId = props.getProperty('MASTER_SS_ID');
-  
-  if (!ssId) {
-    const rootFolders = DriveApp.getFoldersByName(APP_CONFIG.ROOT_FOLDER_NAME);
-    let rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(APP_CONFIG.ROOT_FOLDER_NAME);
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000); // 30 seconds
+    const props = PropertiesService.getScriptProperties();
+    let ssId = props.getProperty('MASTER_SS_ID');
     
-    const files = rootFolder.getFilesByName(APP_CONFIG.MASTER_SHEET_NAME);
-    let ss;
-    if (files.hasNext()) {
-      ss = SpreadsheetApp.open(files.next());
-    } else {
-      ss = SpreadsheetApp.create(APP_CONFIG.MASTER_SHEET_NAME);
-      DriveApp.getFileById(ss.getId()).moveTo(rootFolder);
-      initAllSheets(ss);
+    if (!ssId) {
+      const rootFolders = DriveApp.getFoldersByName(APP_CONFIG.ROOT_FOLDER_NAME);
+      let rootFolder = rootFolders.hasNext() ? rootFolders.next() : DriveApp.createFolder(APP_CONFIG.ROOT_FOLDER_NAME);
+      
+      const files = rootFolder.getFilesByName(APP_CONFIG.MASTER_SHEET_NAME);
+      let ss;
+      if (files.hasNext()) {
+        ss = SpreadsheetApp.open(files.next());
+        // Clean up duplicates if any
+        while (files.hasNext()) {
+          try {
+            DriveApp.getFileById(files.next().getId()).setTrashed(true);
+          } catch(e) {}
+        }
+      } else {
+        ss = SpreadsheetApp.create(APP_CONFIG.MASTER_SHEET_NAME);
+        DriveApp.getFileById(ss.getId()).moveTo(rootFolder);
+        initAllSheets(ss);
+      }
+      
+      ssId = ss.getId();
+      props.setProperty('MASTER_SS_ID', ssId);
+      props.setProperty('ROOT_FOLDER_ID', rootFolder.getId());
     }
     
-    ssId = ss.getId();
-    props.setProperty('MASTER_SS_ID', ssId);
-    props.setProperty('ROOT_FOLDER_ID', rootFolder.getId());
+    return SpreadsheetApp.openById(ssId);
+  } finally {
+    lock.releaseLock();
   }
-  
-  return SpreadsheetApp.openById(ssId);
 }
 
 function initAllSheets(ss) {
@@ -444,18 +455,8 @@ function getResponses(payload) {
 }
 
 // ==========================================
-// SPSS & UTILS
+// UTILS & HELPERS
 // ==========================================
-
-function handleSPSSOrder(payload) {
-  const ss = getORCreateMasterSS();
-  const id = "SPSS_" + Utilities.getUuid().substring(0, 6);
-  ss.getSheetByName(APP_CONFIG.SHEETS.SPSS_ORDERS).appendRow([
-    id, payload.name, payload.email, payload.phone, payload.serviceType,
-    payload.requirements, payload.files?.length || 0, "pending", payload.totalPrice || 0, new Date()
-  ]);
-  return { success: true, orderId: id };
-}
 
 function saveSettings(payload) {
   const ss = getORCreateMasterSS();

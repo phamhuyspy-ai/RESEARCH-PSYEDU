@@ -21,9 +21,9 @@ export const gasService = {
         method: 'POST',
         mode: 'cors',
         headers: {
-          'Content-Type': 'text/plain;charset=utf-8', // GAS often prefers this to avoid preflight
+          'Content-Type': 'text/plain;charset=utf-8', 
         },
-        body: JSON.stringify({ action, ...payload }),
+        body: JSON.stringify({ action, payload }),
       });
 
       if (!response.ok) {
@@ -95,10 +95,6 @@ export const gasService = {
 
   async getFullResponses(surveyId?: string) {
     return this.request('get_full_responses', { surveyId });
-  },
-
-  async submitSPSSOrder(order: any) {
-    return this.request('submit_spss_order', order);
   },
 
   async updateSystemSettings(settings: any) {
