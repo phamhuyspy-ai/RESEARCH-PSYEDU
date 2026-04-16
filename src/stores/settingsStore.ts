@@ -40,7 +40,8 @@ export const useSettingsStore = create<SettingsState>()(
         enabled: false,
         provider: 'gemini',
         apiKey: '',
-        model: 'gemini-1.5-flash' // Default to most token-efficient
+        model: 'gemini-1.5-flash', // Default to most token-efficient
+        systemPrompt: 'Bạn là trợ lý ảo của Viện Tâm lý Giáo dục PSYEDU. Nhiệm vụ của bạn là giải đáp các thắc mắc về các bài kiểm tra tâm lý, hướng dẫn người dùng thực hiện bài kiểm tra, và cung cấp các thông tin cơ bản về tâm lý học. Hãy trả lời ngắn gọn, dễ hiểu và lịch sự.'
       },
       publicRuntime: {
         showResults: true,

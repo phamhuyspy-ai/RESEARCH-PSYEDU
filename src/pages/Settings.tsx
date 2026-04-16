@@ -21,7 +21,8 @@ import {
   Users,
   Code,
   Trash2,
-  Plus
+  Plus,
+  X
 } from 'lucide-react';
 import { gasService } from '../services/gasService';
 
@@ -49,6 +50,7 @@ const Settings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [newUser, setNewUser] = useState<{ name: string, email: string, password: string, role: 'manager' | 'super_admin', workspaceType: 'shared' | 'private' }>({ name: '', email: '', password: '', role: 'manager', workspaceType: 'shared' });
+  const [editingUser, setEditingUser] = useState<{ id: string, name: string, email: string, password?: string, role: 'manager' | 'super_admin', workspaceType: 'shared' | 'private' } | null>(null);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -106,6 +108,31 @@ const Settings: React.FC = () => {
     setMessage({ type: 'success', text: 'Đã thêm người dùng thành công.' });
   };
 
+  const handleUpdateUser = () => {
+    if (!editingUser || !editingUser.name || !editingUser.email) {
+      setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ thông tin.' });
+      return;
+    }
+
+    setFormData({
+      ...formData,
+      users: formData.users.map(u => 
+        u.id === editingUser.id 
+          ? { 
+              ...u, 
+              name: editingUser.name, 
+              email: editingUser.email, 
+              role: editingUser.role, 
+              workspaceType: editingUser.workspaceType,
+              ...(editingUser.password ? { password: editingUser.password } : {})
+            } 
+          : u
+      )
+    });
+    setEditingUser(null);
+    setMessage({ type: 'success', text: 'Đã cập nhật thông tin người dùng.' });
+  };
+
   const handleRemoveUser = (id: string) => {
     setFormData({
       ...formData,
@@ -115,7 +142,7 @@ const Settings: React.FC = () => {
 
   const embedCode = `<!-- PSYEDU RESEARCH PORTAL EMBED -->
 <div style="width:100%; overflow:hidden;">
-  <iframe src="${window.location.origin}/forms?embed=true" width="100%" height="800px" frameborder="0" style="border:none;"></iframe>
+  <iframe src="${window.location.origin}/?embed=true" width="100%" height="800px" frameborder="0" style="border:none;"></iframe>
 </div>`;
 
   return (
@@ -423,6 +450,18 @@ const Settings: React.FC = () => {
                 )}
               </select>
             </div>
+
+            <div>
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Hướng dẫn đào tạo (System Prompt)</label>
+              <textarea
+                value={formData.aiConfig.systemPrompt || ''}
+                onChange={(e) => setFormData({ ...formData, aiConfig: { ...formData.aiConfig, systemPrompt: e.target.value } })}
+                className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                rows={4}
+                placeholder="Nhập hướng dẫn cho chatbot (ví dụ: Bạn là chuyên gia tâm lý...)"
+              />
+              <p className="text-xs text-text-muted mt-1">Hướng dẫn này sẽ định hình cách chatbot trả lời người dùng.</p>
+            </div>
           </div>
         )}
       </div>
@@ -639,12 +678,20 @@ const Settings: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 text-right">
                     {user.role !== 'super_admin' && (
-                      <button 
-                        onClick={() => handleRemoveUser(user.id!)}
-                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex justify-end gap-2">
+                        <button 
+                          onClick={() => setEditingUser({ id: user.id!, name: user.name, email: user.email, role: user.role, workspaceType: user.workspaceType || 'shared' })}
+                          className="text-blue-500 hover:text-blue-700 p-1 rounded hover:bg-blue-50 transition-colors"
+                        >
+                          Sửa
+                        </button>
+                        <button 
+                          onClick={() => handleRemoveUser(user.id!)}
+                          className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -730,6 +777,88 @@ const Settings: React.FC = () => {
           {isSaving ? <Loader2 className="animate-spin h-5 w-5" /> : 'Lưu cấu hình hệ thống'}
         </button>
       </div>
+
+      {/* Edit User Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            <div className="p-6 border-b border-border-main flex justify-between items-center">
+              <h3 className="text-lg font-bold">Chỉnh sửa người dùng</h3>
+              <button onClick={() => setEditingUser(null)} className="text-text-muted hover:text-text-main">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Họ tên</label>
+                <input
+                  type="text"
+                  value={editingUser.name}
+                  onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={editingUser.email}
+                  onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Mật khẩu mới (để trống nếu không đổi)</label>
+                <input
+                  type="password"
+                  value={editingUser.password || ''}
+                  onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  placeholder="Nhập mật khẩu mới..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Vai trò</label>
+                  <select
+                    value={editingUser.role}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value as 'manager' | 'super_admin' })}
+                    className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  >
+                    <option value="manager">Quản lý</option>
+                    <option value="super_admin">Super Admin</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Không gian</label>
+                  <select
+                    value={editingUser.workspaceType}
+                    onChange={(e) => setEditingUser({ ...editingUser, workspaceType: e.target.value as 'shared' | 'private' })}
+                    className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none"
+                  >
+                    <option value="shared">Dùng chung</option>
+                    <option value="private">Không gian riêng</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-border-main flex justify-end gap-3 bg-bg-main">
+              <button 
+                onClick={() => setEditingUser(null)}
+                className="px-4 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors"
+              >
+                Hủy
+              </button>
+              <button 
+                onClick={handleUpdateUser}
+                className="btn-primary px-6 py-2 text-sm"
+              >
+                Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

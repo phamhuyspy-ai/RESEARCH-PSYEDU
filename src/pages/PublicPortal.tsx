@@ -14,7 +14,7 @@ import {
   Twitter,
   Github
 } from 'lucide-react';
-
+import { Chatbot } from '../components/Chatbot';
 
 const PublicPortal: React.FC = () => {
   const { surveys } = useAppStore();
@@ -166,6 +166,7 @@ const PublicPortal: React.FC = () => {
           </div>
         </div>
       </footer>
+      <Chatbot />
     </div>
   );
 };

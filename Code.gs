@@ -8,6 +8,7 @@ const CONFIG = {
   ADMIN_EMAIL: "psyedu.research@gmail.com", // Default admin
   ADMIN_PASSWORD: "admin", // Default password (should be changed)
   ADMIN_PIN: "123456", // Default PIN
+  FOLDER_ID: "1S6j3NmGS5ZDktGNhVZEqtubGKlaXnLX3" // ID thư mục lưu trữ
 };
 
 function doPost(e) {
@@ -28,6 +29,12 @@ function doPost(e) {
         break;
       case 'submit_data':
         result = submitData(requestData.surveyCode, requestData.submission);
+        break;
+      case 'save_db':
+        result = saveDb(requestData.type, requestData.data);
+        break;
+      case 'get_db':
+        result = getDb(requestData.type);
         break;
       case 'send_email_result':
         result = sendEmailResult(requestData.email, requestData.result);
@@ -53,12 +60,24 @@ function doPost(e) {
   }
 }
 
+function moveFileToFolder(fileId, folderId) {
+  try {
+    if (!folderId) return;
+    const file = DriveApp.getFileById(fileId);
+    const folder = DriveApp.getFolderById(folderId);
+    file.moveTo(folder);
+  } catch (e) {
+    console.error("Could not move file to folder: " + e.toString());
+  }
+}
+
 function getAdminWorkspace() {
   const props = PropertiesService.getScriptProperties();
   let adminWs = props.getProperty('admin_workspace_id');
   if (!adminWs) {
     const ss = SpreadsheetApp.create('PsyAdmin Master Workspace');
     adminWs = ss.getId();
+    moveFileToFolder(adminWs, CONFIG.FOLDER_ID);
     props.setProperty('admin_workspace_id', adminWs);
   }
   return adminWs;
@@ -73,10 +92,52 @@ function getUserWorkspace(email) {
 
 function createWorkspace(email) {
   try {
-    const ss = SpreadsheetApp.create('PsyAdmin Workspace - ' + email);
+    const parentFolder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    const newFolder = parentFolder.createFolder('PsyAdmin Workspace - ' + email);
+    
+    const ss = SpreadsheetApp.create('Data - ' + email);
+    const file = DriveApp.getFileById(ss.getId());
+    file.moveTo(newFolder);
+    
     const props = PropertiesService.getScriptProperties();
     props.setProperty('user_workspace_' + email, ss.getId());
-    return { success: true, message: 'Workspace created successfully', workspaceId: ss.getId() };
+    return { success: true, message: 'Workspace created successfully', workspaceId: ss.getId(), folderId: newFolder.getId() };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function saveDb(type, data) {
+  try {
+    const folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    const fileName = type === 'surveys' ? 'psyadmin_surveys.json' : 'psyadmin_settings.json';
+    const files = folder.getFilesByName(fileName);
+    
+    if (files.hasNext()) {
+      const file = files.next();
+      file.setContent(JSON.stringify(data));
+    } else {
+      folder.createFile(fileName, JSON.stringify(data), MimeType.PLAIN_TEXT);
+    }
+    return { success: true, message: 'Saved successfully' };
+  } catch (e) {
+    return { success: false, message: e.toString() };
+  }
+}
+
+function getDb(type) {
+  try {
+    const folder = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    const fileName = type === 'surveys' ? 'psyadmin_surveys.json' : 'psyadmin_settings.json';
+    const files = folder.getFilesByName(fileName);
+    
+    if (files.hasNext()) {
+      const file = files.next();
+      const content = file.getBlob().getDataAsString();
+      return { success: true, data: JSON.parse(content) };
+    } else {
+      return { success: true, data: type === 'surveys' ? [] : null };
+    }
   } catch (e) {
     return { success: false, message: e.toString() };
   }
@@ -125,6 +186,11 @@ function syncSchema(survey, userEmail) {
     // Save survey to workspace mapping
     const props = PropertiesService.getScriptProperties();
     props.setProperty('survey_workspace_' + survey.code, workspaceId);
+    if (userEmail) {
+      props.setProperty('survey_owner_' + survey.code, userEmail);
+    }
+    // Store settings for email logic
+    props.setProperty('survey_settings_' + survey.code, JSON.stringify(survey.settings));
     
     // Create header row based on blocks
     const headers = [
@@ -186,25 +252,74 @@ function submitData(surveyCode, submission) {
     
     sheet.appendRow(rowData);
     
+    // Handle Automatic Email Notifications
+    const settingsStr = props.getProperty('survey_settings_' + surveyCode);
+    const ownerEmail = props.getProperty('survey_owner_' + surveyCode);
+    
+    if (settingsStr) {
+      const settings = JSON.parse(settingsStr);
+      
+      // 1. Send to respondent if enabled in survey settings
+      if (settings.sendEmail && submission.user_email) {
+        sendEmailResult(submission.user_email, submission);
+      }
+      
+      // 2. Send notification to survey owner
+      if (ownerEmail) {
+        sendOwnerNotification(ownerEmail, surveyCode, submission);
+      }
+    }
+    
     return { success: true, message: 'Data submitted successfully' };
   } catch (e) {
     return { success: false, message: e.toString() };
   }
 }
 
-function sendEmailResult(email, result) {
+function sendEmailResult(email, submission) {
   try {
     MailApp.sendEmail({
       to: email,
       subject: 'Kết quả khảo sát của bạn',
       htmlBody: `
-        <h2>Cảm ơn bạn đã tham gia khảo sát</h2>
-        <p>Kết quả của bạn: <strong>${result.total_score}</strong></p>
-        <p>Nhận xét: ${result.result_interpretation}</p>
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4f46e5;">Cảm ơn bạn đã tham gia khảo sát</h2>
+          <p>Chào <strong>${submission.user_name}</strong>,</p>
+          <p>Hệ thống đã ghi nhận kết quả khảo sát của bạn vào lúc ${submission.timestamp}.</p>
+          <div style="background: #f9fafb; padding: 15px; border-radius: 8px; margin: 20px 0;">
+            <p style="margin: 0; font-size: 18px;">Tổng điểm: <strong style="color: #4f46e5;">${submission.total_score}</strong></p>
+            <p style="margin: 10px 0 0 0;"><strong>Nhận xét:</strong> ${submission.result_interpretation}</p>
+          </div>
+          <p>Trân trọng,<br>Đội ngũ PsyAdmin</p>
+        </div>
       `
     });
     return { success: true, message: 'Email sent successfully' };
   } catch (e) {
     return { success: false, message: e.toString() };
+  }
+}
+
+function sendOwnerNotification(ownerEmail, surveyCode, submission) {
+  try {
+    MailApp.sendEmail({
+      to: ownerEmail,
+      subject: `[PsyAdmin] Có lượt phản hồi mới: ${surveyCode}`,
+      htmlBody: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+          <h2 style="color: #4f46e5;">Thông báo phản hồi mới</h2>
+          <p>Hệ thống vừa ghi nhận một lượt tham gia khảo sát mới cho mã: <strong>${surveyCode}</strong></p>
+          <ul style="list-style: none; padding: 0;">
+            <li><strong>Người tham gia:</strong> ${submission.user_name}</li>
+            <li><strong>Email:</strong> ${submission.user_email}</li>
+            <li><strong>Tổng điểm:</strong> ${submission.total_score}</li>
+          </ul>
+          <p>Bạn có thể xem chi tiết trong Google Sheet của mình.</p>
+          <p>Trân trọng,<br>Hệ thống PsyAdmin</p>
+        </div>
+      `
+    });
+  } catch (e) {
+    console.error('Error sending owner notification: ' + e.toString());
   }
 }

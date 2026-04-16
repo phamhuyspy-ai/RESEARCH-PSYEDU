@@ -78,10 +78,18 @@ export const gasService = {
   },
 
   async updateSystemSettings(settings: any) {
-    return this.request('update_system_settings', { settings });
+    return this.request('save_db', { type: 'settings', data: settings });
   },
 
   async deleteSurvey(surveyId: string) {
     return this.request('delete_survey', { surveyId });
+  },
+
+  async saveSurveys(surveys: any) {
+    return this.request('save_db', { type: 'surveys', data: surveys });
+  },
+
+  async getDb(type: 'surveys' | 'settings') {
+    return this.request('get_db', { type });
   }
 };

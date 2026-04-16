@@ -51,6 +51,7 @@ export interface AppSettings {
     provider: 'gemini' | 'openai';
     apiKey: string;
     model: string;
+    systemPrompt?: string;
   };
   publicRuntime: {
     showResults: boolean;

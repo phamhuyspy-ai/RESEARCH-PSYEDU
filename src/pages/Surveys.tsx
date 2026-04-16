@@ -36,9 +36,14 @@ const Surveys: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bảng hỏi này? Dữ liệu liên quan có thể bị ảnh hưởng.')) {
       deleteSurvey(id);
+      
+      // Sync the updated list to GAS
+      const currentSurveys = useAppStore.getState().surveys;
+      const { gasService } = await import('../services/gasService');
+      await gasService.saveSurveys(currentSurveys);
     }
   };
 

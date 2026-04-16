@@ -130,6 +130,11 @@ const Builder: React.FC = () => {
           addSurvey(updatedSurvey);
           navigate(`/admin/builder/${updatedSurvey.id}`, { replace: true });
         }
+        
+        // Sync the entire surveys list to GAS DB
+        const currentSurveys = useAppStore.getState().surveys;
+        await gasService.saveSurveys(currentSurveys);
+
         setSaveMessage({ text: publish ? 'Đã xuất bản thành công!' : 'Đã lưu nháp thành công!', type: 'success' });
       } else {
         setSaveMessage({ text: response.message || 'Lỗi khi đồng bộ với máy chủ.', type: 'error' });

@@ -14,7 +14,8 @@ import {
   Key,
   Loader2,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  Globe
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx, type ClassValue } from 'clsx';
@@ -79,6 +80,7 @@ const AdminLayout: React.FC = () => {
   };
 
   const navItems = [
+    { label: 'Trang chủ', path: '/', icon: Globe },
     { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { label: 'Danh sách bảng hỏi', path: '/admin/surveys', icon: ClipboardList },
     { label: 'Tạo bảng hỏi', path: '/admin/builder', icon: PlusCircle },

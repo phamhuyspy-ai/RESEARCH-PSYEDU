@@ -4,7 +4,8 @@ import { ProtectedRoute, PublicOnlyRoute } from './components/AuthGuards';
 import { useAuthStore } from './stores/authStore';
 import { useAppStore } from './stores/appStore';
 import { useSettingsStore } from './stores/settingsStore';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { gasService } from './services/gasService';
 
 // Lazy load pages
 import Login from './pages/Login';
@@ -21,8 +22,43 @@ export default function App() {
   const authHydrated = useAuthStore((state) => state.hasHydrated);
   const appHydrated = useAppStore((state) => state.hasHydrated);
   const settingsHydrated = useSettingsStore((state) => state.hasHydrated);
+  const { setSurveys } = useAppStore();
+  const { updateSettings, gasUrl } = useSettingsStore();
+  const [isSyncing, setIsSyncing] = useState(true);
 
-  const isReady = authHydrated && appHydrated && settingsHydrated;
+  useEffect(() => {
+    const syncDb = async () => {
+      if (!gasUrl) {
+        setIsSyncing(false);
+        return;
+      }
+      
+      try {
+        const [surveysRes, settingsRes] = await Promise.all([
+          gasService.getDb('surveys'),
+          gasService.getDb('settings')
+        ]);
+        
+        if (surveysRes.success && surveysRes.data) {
+          setSurveys(surveysRes.data);
+        }
+        
+        if (settingsRes.success && settingsRes.data) {
+          updateSettings(settingsRes.data);
+        }
+      } catch (error) {
+        console.error('Failed to sync DB', error);
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    
+    if (authHydrated && appHydrated && settingsHydrated) {
+      syncDb();
+    }
+  }, [authHydrated, appHydrated, settingsHydrated, gasUrl, setSurveys, updateSettings]);
+
+  const isReady = authHydrated && appHydrated && settingsHydrated && !isSyncing;
 
   if (!isReady) {
     return (

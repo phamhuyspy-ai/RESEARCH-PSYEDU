@@ -13,6 +13,7 @@ import {
   Info
 } from 'lucide-react';
 import { gasService } from '../services/gasService';
+import { Chatbot } from '../components/Chatbot';
 
 const SurveyRunner: React.FC = () => {
   const { code } = useParams();
@@ -592,6 +593,7 @@ const SurveyRunner: React.FC = () => {
           )}
         </div>
       </footer>
+      <Chatbot />
     </div>
   );
 };
