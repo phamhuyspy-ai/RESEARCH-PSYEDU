@@ -28,12 +28,12 @@ export const useSettingsStore = create<SettingsState>()(
         tiktok: ''
       },
       theme: {
-        primaryColor: '#3b82f6',
-        secondaryColor: '#10b981',
-        backgroundColor: '#ffffff',
+        primaryColor: '#2E97A7',
+        secondaryColor: '#D49320',
+        backgroundColor: '#F8FAFC',
         textColor: '#1f2937',
-        linkColor: '#2563eb',
-        hoverColor: '#1d4ed8',
+        linkColor: '#2E97A7',
+        hoverColor: '#247a87',
         fontFamily: 'Inter, sans-serif'
       },
       aiConfig: {

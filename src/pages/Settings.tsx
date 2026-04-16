@@ -48,6 +48,7 @@ const Settings: React.FC = () => {
   });
   
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [newUser, setNewUser] = useState<{ name: string, email: string, password: string, role: 'manager' | 'super_admin', workspaceType: 'shared' | 'private' }>({ name: '', email: '', password: '', role: 'manager', workspaceType: 'shared' });
   const [editingUser, setEditingUser] = useState<{ id: string, name: string, email: string, password?: string, role: 'manager' | 'super_admin', workspaceType: 'shared' | 'private' } | null>(null);
@@ -138,6 +139,42 @@ const Settings: React.FC = () => {
       ...formData,
       users: formData.users.filter(u => u.id !== id)
     });
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Kích thước file quá lớn (tối đa 2MB).' });
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Data = event.target?.result as string;
+      try {
+        const response = await gasService.uploadFile({
+          fileName: file.name,
+          fileType: file.type,
+          base64Data: base64Data
+        });
+
+        if (response.success) {
+          setFormData({ ...formData, logoUrl: response.url });
+          setMessage({ type: 'success', text: 'Tải logo lên thành công.' });
+        } else {
+          setMessage({ type: 'error', text: response.message || 'Lỗi khi tải logo lên.' });
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Lỗi kết nối khi tải logo.' });
+      } finally {
+        setIsUploadingLogo(false);
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const embedCode = `<!-- PSYEDU RESEARCH PORTAL EMBED -->
@@ -284,14 +321,21 @@ const Settings: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Logo URL</label>
-              <input
-                type="text"
-                value={formData.logoUrl}
-                onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
-                className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-                placeholder="https://example.com/logo.png"
-              />
+              <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Logo Ứng dụng</label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={formData.logoUrl}
+                  onChange={(e) => setFormData({ ...formData, logoUrl: e.target.value })}
+                  className="flex-1 px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  placeholder="https://example.com/logo.png"
+                />
+                <label className={`cursor-pointer flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg text-xs font-bold hover:bg-primary/20 transition-all ${isUploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
+                  {isUploadingLogo ? <Loader2 className="animate-spin" size={14} /> : <Plus size={14} />}
+                  Tải ảnh
+                  <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                </label>
+              </div>
             </div>
             <div className="bg-bg-main p-4 rounded-xl border border-border-main flex items-center gap-4">
               <div className="w-16 h-16 bg-white rounded-xl border border-border-main flex items-center justify-center shadow-sm overflow-hidden shrink-0">
@@ -317,45 +361,63 @@ const Settings: React.FC = () => {
                 className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
               >
                 <option value="Inter, sans-serif">Inter (Mặc định)</option>
-                <option value="Roboto, sans-serif">Roboto</option>
-                <option value="'Open Sans', sans-serif">Open Sans</option>
                 <option value="'Be Vietnam Pro', sans-serif">Be Vietnam Pro</option>
               </select>
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Màu chủ đạo</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={formData.theme.primaryColor}
-                    onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, primaryColor: e.target.value } })}
-                    className="h-9 w-12 p-1 border border-border-main rounded-lg cursor-pointer shrink-0"
-                  />
-                  <input
-                    type="text"
-                    value={formData.theme.primaryColor}
-                    onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, primaryColor: e.target.value } })}
-                    className="w-full px-2 py-1 border border-border-main rounded-lg text-xs font-mono outline-none"
-                  />
+
+            <div className="bg-bg-main p-6 rounded-2xl border border-border-main space-y-6">
+              <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+                <Palette size={18} className="text-primary" />
+                Màu sắc giao diện
+              </h3>
+              
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-text-main">Màu chính (Primary)</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">Dùng cho nút bấm, viền active, các yếu tố quan trọng.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-text-muted">{formData.theme.primaryColor}</span>
+                    <input
+                      type="color"
+                      value={formData.theme.primaryColor}
+                      onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, primaryColor: e.target.value, linkColor: e.target.value } })}
+                      className="h-10 w-10 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Màu liên kết</label>
-                <div className="flex gap-2">
-                  <input
-                    type="color"
-                    value={formData.theme.linkColor}
-                    onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, linkColor: e.target.value } })}
-                    className="h-9 w-12 p-1 border border-border-main rounded-lg cursor-pointer shrink-0"
-                  />
-                  <input
-                    type="text"
-                    value={formData.theme.linkColor}
-                    onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, linkColor: e.target.value } })}
-                    className="w-full px-2 py-1 border border-border-main rounded-lg text-xs font-mono outline-none"
-                  />
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-text-main">Màu phụ (Secondary)</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">Dùng cho các điểm nhấn nhẹ, highlight, hoặc nút phụ.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-text-muted">{formData.theme.secondaryColor}</span>
+                    <input
+                      type="color"
+                      value={formData.theme.secondaryColor}
+                      onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, secondaryColor: e.target.value } })}
+                      className="h-10 w-10 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-bold text-text-main">Màu nền (Background)</p>
+                    <p className="text-[10px] text-text-muted mt-0.5">Màu nền tổng thể của khu vực nội dung bảng hỏi.</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-mono text-text-muted">{formData.theme.backgroundColor}</span>
+                    <input
+                      type="color"
+                      value={formData.theme.backgroundColor}
+                      onChange={(e) => setFormData({ ...formData, theme: { ...formData.theme, backgroundColor: e.target.value } })}
+                      className="h-10 w-10 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

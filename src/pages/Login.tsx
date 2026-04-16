@@ -4,11 +4,11 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { gasService } from '../services/gasService';
-import { Lock, Mail, Key, AlertCircle, Loader2, Globe, CheckCircle2 } from 'lucide-react';
-
+import { Lock, Mail, Key, AlertCircle, Loader2, Globe, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react';
 
 const Login: React.FC = () => {
   const { gasUrl, updateSettings } = useSettingsStore();
+  const [step, setStep] = useState<'pin' | 'auth'>('pin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
@@ -27,6 +27,17 @@ const Login: React.FC = () => {
 
   const from = location.state?.from?.pathname || '/admin';
 
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Default PIN is 123456 as requested
+    if (pin === '123456') {
+      setStep('auth');
+      setError('');
+    } else {
+      setError('Mã PIN không chính xác. Vui lòng kiểm tra lại.');
+    }
+  };
+
   const handleTestConnection = async () => {
     if (!inputGasUrl) {
       setError('Vui lòng nhập GAS URL để kiểm tra.');
@@ -38,19 +49,15 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      // Temporarily update store to test
-      const originalUrl = gasUrl;
-      updateSettings({ gasUrl: inputGasUrl });
+      const response = await fetch(inputGasUrl + '?action=health');
+      const result = await response.json();
       
-      const response = await gasService.request('health_check');
-      
-      if (response.success) {
+      if (result.status === 'ok') {
         setConnectionStatus('success');
+        updateSettings({ gasUrl: inputGasUrl });
       } else {
         setConnectionStatus('error');
-        setError(response.message || 'Không thể kết nối với GAS URL này.');
-        // Revert if failed
-        updateSettings({ gasUrl: originalUrl });
+        setError('Không thể kết nối với GAS URL này.');
       }
     } catch (err) {
       setConnectionStatus('error');
@@ -63,22 +70,10 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!inputGasUrl) {
-      setError('Vui lòng cấu hình GAS URL trước khi đăng nhập.');
-      setShowGasConfig(true);
-      return;
-    }
-
-    // Update gasUrl in store if changed
-    if (inputGasUrl !== gasUrl) {
-      updateSettings({ gasUrl: inputGasUrl });
-    }
-
     setIsLoading(true);
 
     try {
-      const response = await gasService.login(email, password, pin);
+      const response = await gasService.login(email, password);
       
       if (response.success && response.user) {
         login(response.user);
@@ -98,16 +93,6 @@ const Login: React.FC = () => {
     setError('');
     setSuccessMsg('');
 
-    if (!inputGasUrl) {
-      setError('Vui lòng cấu hình GAS URL trước.');
-      setShowGasConfig(true);
-      return;
-    }
-
-    if (inputGasUrl !== gasUrl) {
-      updateSettings({ gasUrl: inputGasUrl });
-    }
-
     if (!email) {
       setError('Vui lòng nhập email của bạn.');
       return;
@@ -118,10 +103,10 @@ const Login: React.FC = () => {
     try {
       const response = await gasService.recoverPassword(email);
       if (response.success) {
-        setSuccessMsg('Mật khẩu mới đã được gửi vào email của bạn. Vui lòng kiểm tra hộp thư.');
+        setSuccessMsg(response.message || 'Mật khẩu mới đã được gửi vào email của bạn.');
         setIsForgotPassword(false);
       } else {
-        setError(response.message || 'Không thể khôi phục mật khẩu. Vui lòng kiểm tra lại email.');
+        setError(response.message || 'Không thể khôi phục mật khẩu.');
       }
     } catch (err) {
       setError('Đã có lỗi xảy ra khi kết nối với máy chủ.');
@@ -131,226 +116,214 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg-main flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg-main flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="h-12 w-12 bg-primary rounded-xl flex items-center justify-center text-white shadow-sm">
-            <Lock size={24} />
+          <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-primary/20 rotate-3 transform hover:rotate-0 transition-transform">
+            <Lock size={32} />
           </div>
         </div>
-        <h2 className="mt-6 text-center text-2xl font-bold text-text-main tracking-tight">
-          {isForgotPassword ? 'Khôi phục mật khẩu' : 'PsychAdmin Login'}
+        <h2 className="mt-8 text-center text-3xl font-black text-text-main tracking-tight">
+          {step === 'pin' ? 'Khu vực quản trị' : isForgotPassword ? 'Quên mật khẩu' : 'Đăng nhập hệ thống'}
         </h2>
         <p className="mt-2 text-center text-sm text-text-muted">
-          {isForgotPassword ? 'Nhập email để nhận mật khẩu mới' : 'System Overview & Management'}
+          {step === 'pin' ? 'Vui lòng nhập mã PIN bảo mật để tiếp tục' : 'Chào mừng bạn quay lại với ProPsy Admin'}
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-sm sm:rounded-xl sm:px-10 border border-border-main">
-          <form className="space-y-6" onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit}>
+      <div className="mt-10 sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="bg-white py-10 px-6 shadow-2xl shadow-gray-200/50 sm:rounded-[32px] sm:px-12 border border-border-main relative overflow-hidden">
+          {/* Decorative background circle */}
+          <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <form className="space-y-6 relative" onSubmit={step === 'pin' ? handlePinSubmit : (isForgotPassword ? handleForgotPassword : handleSubmit)}>
             {error && (
-              <div className="bg-red-50 border border-red-100 p-3 rounded-lg flex items-start gap-3">
-                <AlertCircle className="text-red-500 shrink-0" size={18} />
-                <p className="text-xs text-red-700 font-medium">{error}</p>
+              <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle className="text-red-500 shrink-0" size={20} />
+                <p className="text-sm text-red-700 font-medium leading-tight">{error}</p>
               </div>
             )}
             
             {successMsg && (
-              <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start gap-3">
-                <CheckCircle2 className="text-green-500 shrink-0" size={18} />
-                <p className="text-xs text-green-700 font-medium">{successMsg}</p>
+              <div className="bg-green-50 border border-green-100 p-4 rounded-2xl flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+                <CheckCircle2 className="text-green-500 shrink-0" size={20} />
+                <p className="text-sm text-green-700 font-medium leading-tight">{successMsg}</p>
               </div>
             )}
 
-            {showGasConfig && (
-              <div className="bg-bg-main p-4 rounded-lg border border-border-main space-y-3">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="gasUrl" className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">
-                    Google Apps Script URL
-                  </label>
-                  {!gasUrl && <span className="text-[10px] font-bold text-red-500 uppercase">Bắt buộc</span>}
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Globe className="h-4 w-4 text-text-muted" />
-                  </div>
-                  <input
-                    id="gasUrl"
-                    type="url"
-                    value={inputGasUrl}
-                    onChange={(e) => {
-                      setInputGasUrl(e.target.value);
-                      setConnectionStatus('idle');
-                    }}
-                    className="appearance-none block w-full pl-10 px-3 py-2 border border-border-main rounded-lg text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    placeholder="https://script.google.com/macros/s/.../exec"
-                  />
-                </div>
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] text-text-muted leading-relaxed max-w-[200px]">
-                    Dán URL của Web App đã được triển khai từ Google Apps Script.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleTestConnection}
-                    disabled={isTestingConnection || !inputGasUrl}
-                    className={`text-[10px] font-bold px-3 py-1.5 rounded-md border transition-all flex items-center gap-1.5 ${
-                      connectionStatus === 'success' 
-                        ? 'bg-green-50 text-green-600 border-green-200' 
-                        : connectionStatus === 'error'
-                        ? 'bg-red-50 text-red-600 border-red-200'
-                        : 'bg-white text-text-main border-border-main hover:bg-bg-main'
-                    }`}
-                  >
-                    {isTestingConnection ? (
-                      <Loader2 className="animate-spin h-3 w-3" />
-                    ) : connectionStatus === 'success' ? (
-                      <CheckCircle2 className="h-3 w-3" />
-                    ) : connectionStatus === 'error' ? (
-                      <AlertCircle className="h-3 w-3" />
-                    ) : null}
-                    {connectionStatus === 'success' ? 'Kết nối OK' : 'Kiểm tra kết nối'}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="email" className="block text-xs font-bold text-text-muted uppercase tracking-wider">
-                  Email Address
-                </label>
-                {gasUrl && (
-                  <button 
-                    type="button"
-                    onClick={() => setShowGasConfig(!showGasConfig)}
-                    className="text-[10px] font-bold text-primary hover:underline"
-                  >
-                    {showGasConfig ? 'Ẩn cấu hình' : 'Đổi GAS URL'}
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-4 w-4 text-text-muted" />
-                </div>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  placeholder="admin@psycheval.io"
-                />
-              </div>
-            </div>
-
-            {!isForgotPassword && (
-              <>
+            {step === 'pin' ? (
+              <div className="space-y-6">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label htmlFor="password" className="block text-xs font-bold text-text-muted uppercase tracking-wider">
-                      Password
-                    </label>
-                    <button 
-                      type="button"
-                      onClick={() => {
-                        setIsForgotPassword(true);
-                        setError('');
-                        setSuccessMsg('');
-                      }}
-                      className="text-[10px] font-bold text-primary hover:underline"
-                    >
-                      Quên mật khẩu?
-                    </button>
-                  </div>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Key className="h-4 w-4 text-text-muted" />
-                    </div>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required={!isForgotPassword}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="pin" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
-                    Verification PIN
+                  <label htmlFor="pin" className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em] mb-3">
+                    Mã PIN 6 số
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-4 w-4 text-text-muted" />
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-text-muted group-focus-within:text-primary transition-colors">
+                      <ShieldCheck size={20} />
                     </div>
                     <input
                       id="pin"
                       name="pin"
-                      type="text"
-                      required={!isForgotPassword}
+                      type="password"
+                      required
                       maxLength={6}
+                      autoFocus
                       value={pin}
-                      onChange={(e) => setPin(e.target.value)}
-                      className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      placeholder="123456"
+                      onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                      className="appearance-none block w-full pl-12 px-4 py-4 border-2 border-border-main rounded-2xl text-lg font-mono tracking-[0.5em] placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all text-center"
+                      placeholder="••••••"
                     />
                   </div>
                 </div>
-              </>
-            )}
-
-            <div>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isLoading ? (
-                  <Loader2 className="animate-spin h-5 w-5" />
-                ) : isForgotPassword ? (
-                  'Gửi email khôi phục'
-                ) : (
-                  'Sign In to Dashboard'
-                )}
-              </button>
-            </div>
-            
-            {isForgotPassword && (
-              <div className="text-center mt-4">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setIsForgotPassword(false);
-                    setError('');
-                    setSuccessMsg('');
-                  }}
-                  className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-3 py-4 px-6 border border-transparent rounded-2xl shadow-xl text-lg font-black text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-primary/20 transition-all active:scale-[0.98]"
                 >
-                  Quay lại đăng nhập
+                  Tiếp tục
+                  <ChevronRight size={20} />
                 </button>
+              </div>
+            ) : (
+              <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+                {showGasConfig && (
+                  <div className="bg-bg-main p-4 rounded-2xl border-2 border-border-main space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label htmlFor="gasUrl" className="block text-[10px] font-black text-text-muted uppercase tracking-widest">
+                        Cấu hình kết nối
+                      </label>
+                    </div>
+                    <div className="relative group">
+                      <input
+                        id="gasUrl"
+                        type="url"
+                        value={inputGasUrl}
+                        onChange={(e) => {
+                          setInputGasUrl(e.target.value);
+                          setConnectionStatus('idle');
+                        }}
+                        className="appearance-none block w-full px-4 py-3 border-2 border-white rounded-xl text-xs placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all bg-white"
+                        placeholder="Dán GAS Web App URL tại đây..."
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={isTestingConnection || !inputGasUrl}
+                      className="w-full text-xs font-bold py-3 rounded-xl border-2 transition-all flex items-center justify-center gap-2 bg-white text-text-main border-border-main hover:bg-white hover:border-primary group"
+                    >
+                      {isTestingConnection ? (
+                        <Loader2 className="animate-spin h-4 w-4" />
+                      ) : connectionStatus === 'success' ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : 'Kiểm tra & Áp dụng'}
+                    </button>
+                  </div>
+                )}
+
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label htmlFor="email" className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+                      Tài khoản Email
+                    </label>
+                  </div>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-text-muted group-focus-within:text-primary transition-colors">
+                      <Mail size={18} />
+                    </div>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="appearance-none block w-full pl-11 px-4 py-4 border-2 border-border-main rounded-2xl text-sm placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
+                      placeholder="example@propsy.vn"
+                    />
+                  </div>
+                </div>
+
+                {!isForgotPassword && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label htmlFor="password" className="block text-[10px] font-black text-text-muted uppercase tracking-[0.2em]">
+                        Mật khẩu
+                      </label>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setIsForgotPassword(true);
+                          setError('');
+                        }}
+                        className="text-[10px] font-black text-primary hover:text-blue-800 tracking-wider"
+                      >
+                        QUÊN?
+                      </button>
+                    </div>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-text-muted group-focus-within:text-primary transition-colors">
+                        <Key size={18} />
+                      </div>
+                      <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        required={!isForgotPassword}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="appearance-none block w-full pl-11 px-4 py-4 border-2 border-border-main rounded-2xl text-sm placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full flex justify-center py-4 px-6 border border-transparent rounded-2xl shadow-xl text-lg font-black text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:opacity-50 transition-all active:scale-[0.98]"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="animate-spin h-6 w-6" />
+                    ) : isForgotPassword ? (
+                      'Lấy lại mật khẩu'
+                    ) : (
+                      'Đăng nhập ngay'
+                    )}
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-4 text-center mt-6">
+                  {isForgotPassword ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsForgotPassword(false)}
+                      className="text-sm font-bold text-text-muted hover:text-primary transition-colors"
+                    >
+                      Quay lại trang đăng nhập
+                    </button>
+                  ) : (
+                    <button 
+                      type="button"
+                      onClick={() => setShowGasConfig(!showGasConfig)}
+                      className="text-[10px] font-bold text-text-muted hover:text-primary transition-colors uppercase tracking-[0.2em]"
+                    >
+                      {showGasConfig ? 'Đóng cấu hình' : 'Thiết lập kết nối GAS'}
+                    </button>
+                  )}
+                </div>
               </div>
             )}
           </form>
         </div>
         
-        <div className="mt-6 text-center">
-          <p className="text-[10px] text-text-muted uppercase tracking-widest opacity-50">
-            v2.4.0-production
-          </p>
-        </div>
+        <p className="mt-10 text-center text-xs text-text-muted font-medium opacity-40">
+          PROPSY DATABASE SYSTEM &copy; 2024
+        </p>
       </div>
     </div>
   );
 };
-
 
 export default Login;

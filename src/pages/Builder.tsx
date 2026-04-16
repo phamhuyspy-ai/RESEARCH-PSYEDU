@@ -14,7 +14,8 @@ import {
   Settings as SettingsIcon,
   Share2,
   Copy,
-  Download
+  Download,
+  Plus
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { gasService } from '../services/gasService';
@@ -53,6 +54,7 @@ const Builder: React.FC = () => {
   
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'builder' | 'branding' | 'publish'>('builder');
@@ -121,7 +123,7 @@ const Builder: React.FC = () => {
 
     try {
       // Sync with GAS
-      const response = await gasService.syncSchema(updatedSurvey, user?.email);
+      const response = await gasService.saveSurvey(updatedSurvey);
       
       if (response.success) {
         if (id) {
@@ -131,10 +133,6 @@ const Builder: React.FC = () => {
           navigate(`/admin/builder/${updatedSurvey.id}`, { replace: true });
         }
         
-        // Sync the entire surveys list to GAS DB
-        const currentSurveys = useAppStore.getState().surveys;
-        await gasService.saveSurveys(currentSurveys);
-
         setSaveMessage({ text: publish ? 'Đã xuất bản thành công!' : 'Đã lưu nháp thành công!', type: 'success' });
       } else {
         setSaveMessage({ text: response.message || 'Lỗi khi đồng bộ với máy chủ.', type: 'error' });
@@ -145,6 +143,42 @@ const Builder: React.FC = () => {
       setIsSaving(false);
       setTimeout(() => setSaveMessage(null), 5000);
     }
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      setSaveMessage({ text: 'Kích thước file quá lớn (tối đa 2MB).', type: 'error' });
+      return;
+    }
+
+    setIsUploadingLogo(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Data = event.target?.result as string;
+      try {
+        const response = await gasService.uploadFile({
+          fileName: file.name,
+          fileType: file.type,
+          base64Data: base64Data
+        });
+
+        if (response.success) {
+          updateBranding({ logoUrl: response.url });
+          setSaveMessage({ text: 'Tải logo lên thành công.', type: 'success' });
+        } else {
+          setSaveMessage({ text: response.message || 'Lỗi khi tải logo lên.', type: 'error' });
+        }
+      } catch (error) {
+        setSaveMessage({ text: 'Lỗi kết nối khi tải logo.', type: 'error' });
+      } finally {
+        setIsUploadingLogo(false);
+        setTimeout(() => setSaveMessage(null), 3000);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleAddBlock = (type: SurveyBlock['type']) => {
@@ -306,48 +340,65 @@ const Builder: React.FC = () => {
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Logo URL riêng cho form này</label>
-                  <input
-                    type="text"
-                    value={activeSurvey.branding?.logoUrl || ''}
-                    onChange={(e) => updateBranding({ logoUrl: e.target.value })}
-                    className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-lg text-xs focus:ring-2 focus:ring-primary/20 outline-none"
-                    placeholder="https://..."
-                  />
+                  <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Logo riêng cho form</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={activeSurvey.branding?.logoUrl || ''}
+                      onChange={(e) => updateBranding({ logoUrl: e.target.value })}
+                      className="flex-1 px-3 py-2 bg-bg-main border border-border-main rounded-lg text-xs focus:ring-2 focus:ring-primary/20 outline-none"
+                      placeholder="https://..."
+                    />
+                    <label className={`cursor-pointer flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg text-[10px] font-bold hover:bg-primary/20 transition-all ${isUploadingLogo ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {isUploadingLogo ? <Loader2 className="animate-spin" size={12} /> : <Plus size={12} />}
+                      Tải ảnh
+                      <input type="file" className="hidden" accept="image/*" onChange={handleLogoUpload} />
+                    </label>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Màu chủ đạo</label>
-                    <div className="flex gap-2">
+                <div className="space-y-6 pt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-text-main">Màu chính (Primary)</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-mono text-text-muted">{activeSurvey.branding?.primaryColor || '#2E97A7'}</span>
                       <input
                         type="color"
-                        value={activeSurvey.branding?.primaryColor || '#3b82f6'}
+                        value={activeSurvey.branding?.primaryColor || '#2E97A7'}
                         onChange={(e) => updateBranding({ primaryColor: e.target.value })}
-                        className="h-9 w-12 p-1 border border-border-main rounded-lg cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={activeSurvey.branding?.primaryColor || '#3b82f6'}
-                        onChange={(e) => updateBranding({ primaryColor: e.target.value })}
-                        className="flex-1 px-3 py-2 bg-bg-main border border-border-main rounded-lg text-xs font-mono"
+                        className="h-8 w-8 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
                       />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest mb-1.5">Màu nền</label>
-                    <div className="flex gap-2">
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-text-main">Màu phụ (Secondary)</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-mono text-text-muted">{activeSurvey.branding?.secondaryColor || '#D49320'}</span>
                       <input
                         type="color"
-                        value={activeSurvey.branding?.backgroundColor || '#f8fafc'}
-                        onChange={(e) => updateBranding({ backgroundColor: e.target.value })}
-                        className="h-9 w-12 p-1 border border-border-main rounded-lg cursor-pointer"
+                        value={activeSurvey.branding?.secondaryColor || '#D49320'}
+                        onChange={(e) => updateBranding({ secondaryColor: e.target.value })}
+                        className="h-8 w-8 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
                       />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-text-main">Màu nền (Background)</p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-mono text-text-muted">{activeSurvey.branding?.backgroundColor || '#F8FAFC'}</span>
                       <input
-                        type="text"
-                        value={activeSurvey.branding?.backgroundColor || '#f8fafc'}
+                        type="color"
+                        value={activeSurvey.branding?.backgroundColor || '#F8FAFC'}
                         onChange={(e) => updateBranding({ backgroundColor: e.target.value })}
-                        className="flex-1 px-3 py-2 bg-bg-main border border-border-main rounded-lg text-xs font-mono"
+                        className="h-8 w-8 p-1 border border-border-main rounded-lg cursor-pointer bg-white"
                       />
                     </div>
                   </div>
@@ -409,12 +460,12 @@ const Builder: React.FC = () => {
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/s/${activeSurvey.id}`}
+                        value={`${window.location.origin}/survey/${activeSurvey.code}`}
                         className="flex-1 px-2 py-1.5 bg-bg-main border border-border-main rounded text-xs text-text-muted"
                       />
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/s/${activeSurvey.id}`);
+                          navigator.clipboard.writeText(`${window.location.origin}/survey/${activeSurvey.code}`);
                           setSaveMessage({ text: 'Đã sao chép link', type: 'success' });
                           setTimeout(() => setSaveMessage(null), 3000);
                         }}
@@ -462,7 +513,7 @@ const Builder: React.FC = () => {
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-border-main">
                     <QRCodeSVG 
                       id="builder-qr-code"
-                      value={`${window.location.origin}/s/${activeSurvey.id}`} 
+                      value={`${window.location.origin}/survey/${activeSurvey.code}`} 
                       size={200}
                       level="H"
                       includeMargin={true}

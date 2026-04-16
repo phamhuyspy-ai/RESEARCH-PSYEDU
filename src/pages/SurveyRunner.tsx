@@ -197,7 +197,7 @@ const SurveyRunner: React.FC = () => {
     };
 
     try {
-      const response = await gasService.submitData(survey.code, submission);
+      const response = await gasService.submitResponse({ surveyCode: survey.code, submission });
       if (response.success) {
         // Pass original responses for the results page UI
         navigate(`/results/${submission.submission_id}`, { state: { submission: { ...submission, responses }, survey } });

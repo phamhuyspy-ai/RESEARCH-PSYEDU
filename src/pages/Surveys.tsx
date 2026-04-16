@@ -22,6 +22,7 @@ import {
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
+import { gasService } from '../services/gasService';
 
 const Surveys: React.FC = () => {
   const { surveys, deleteSurvey } = useAppStore();
@@ -29,7 +30,7 @@ const Surveys: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [selectedSurveyForShare, setSelectedSurveyForShare] = useState<string | null>(null);
 
-  const filteredSurveys = surveys.filter(s => {
+  const filteredSurveys = (Array.isArray(surveys) ? surveys : []).filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          s.code.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || s.status === statusFilter;
@@ -38,12 +39,16 @@ const Surveys: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa bảng hỏi này? Dữ liệu liên quan có thể bị ảnh hưởng.')) {
-      deleteSurvey(id);
-      
-      // Sync the updated list to GAS
-      const currentSurveys = useAppStore.getState().surveys;
-      const { gasService } = await import('../services/gasService');
-      await gasService.saveSurveys(currentSurveys);
+      try {
+        const response = await gasService.deleteSurvey(id);
+        if (response.success) {
+          deleteSurvey(id);
+        } else {
+          alert(response.message || 'Lỗi khi xóa bảng hỏi.');
+        }
+      } catch (err) {
+        alert('Đã có lỗi xảy ra khi kết nối với máy chủ.');
+      }
     }
   };
 
@@ -73,7 +78,7 @@ const Surveys: React.FC = () => {
     }
   };
 
-  const selectedSurvey = surveys.find(s => s.id === selectedSurveyForShare);
+  const selectedSurvey = Array.isArray(surveys) ? surveys.find(s => s.id === selectedSurveyForShare) : undefined;
   const surveyUrl = selectedSurvey ? `${window.location.origin}/survey/${selectedSurvey.code}` : '';
 
   return (

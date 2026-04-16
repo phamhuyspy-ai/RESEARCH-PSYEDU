@@ -3,6 +3,7 @@ import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { gasService } from '../services/gasService';
 import { 
   LayoutDashboard, 
   PlusCircle, 
@@ -15,7 +16,8 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Globe
+  Globe,
+  FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx, type ClassValue } from 'clsx';
@@ -61,7 +63,11 @@ const AdminLayout: React.FC = () => {
     setIsChangingPassword(true);
     try {
       // Assuming gasService.updatePassword exists
-      const response = await import('../services/gasService').then(m => m.gasService.updatePassword(passwordData.oldPassword, passwordData.newPassword));
+      const response = await gasService.updatePassword({ 
+        email: user?.email || '', 
+        oldPassword: passwordData.oldPassword, 
+        newPassword: passwordData.newPassword 
+      });
       if (response.success) {
         setPasswordSuccess('Đổi mật khẩu thành công.');
         setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
@@ -82,7 +88,8 @@ const AdminLayout: React.FC = () => {
   const navItems = [
     { label: 'Trang chủ', path: '/', icon: Globe },
     { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
-    { label: 'Danh sách bảng hỏi', path: '/admin/surveys', icon: ClipboardList },
+    { label: 'Bảng hỏi', path: '/admin/surveys', icon: ClipboardList },
+    { label: 'Kết quả', path: '/admin/responses', icon: FileText },
     { label: 'Tạo bảng hỏi', path: '/admin/builder', icon: PlusCircle },
     { label: 'System Settings', path: '/admin/settings', icon: SettingsIcon, roles: ['super_admin'] },
   ].filter(item => !item.roles || (user && item.roles.includes(user.role)));

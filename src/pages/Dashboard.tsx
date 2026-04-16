@@ -18,7 +18,8 @@ import { vi } from 'date-fns/locale';
 
 
 const Dashboard: React.FC = () => {
-  const { surveys } = useAppStore();
+  const { surveys: rawSurveys } = useAppStore();
+  const surveys = Array.isArray(rawSurveys) ? rawSurveys : [];
 
   const stats = [
     { label: 'Tổng số bảng hỏi', value: surveys.length, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },

@@ -49,47 +49,67 @@ export const gasService = {
     }
   },
 
-  async login(email: string, password: string, pin: string) {
-    return this.request('login_admin', { email, password, pin });
-  },
-
-  async syncSchema(survey: any, userEmail?: string) {
-    return this.request('sync_schema', { survey, userEmail });
-  },
-
-  async createWorkspace(email: string) {
-    return this.request('create_workspace', { email });
-  },
-
-  async submitData(surveyCode: string, submission: any) {
-    return this.request('submit_data', { surveyCode, submission });
-  },
-
-  async sendEmailResult(email: string, result: any) {
-    return this.request('send_email_result', { email, result });
-  },
-
-  async updatePassword(oldPassword: string, newPassword: string) {
-    return this.request('update_password', { oldPassword, newPassword });
+  async login(email: string, password?: string, pin?: string) {
+    return this.request('admin_login', { email, password, pin });
   },
 
   async recoverPassword(email: string) {
     return this.request('recover_password', { email });
   },
 
+  async updatePassword(payload: { email: string, oldPassword: string, newPassword: string }) {
+    return this.request('update_password', payload);
+  },
+
+  async getSurveys(payload: any = {}) {
+    return this.request('get_surveys', payload);
+  },
+
+  async getSurveyDetail(id: string) {
+    return this.request('get_survey_detail', { id });
+  },
+
+  async saveSurvey(survey: any) {
+    return this.request('save_survey', survey);
+  },
+
+  async deleteSurvey(id: string) {
+    return this.request('delete_survey', { id });
+  },
+
+  async publishSurvey(id: string, publicUrl: string) {
+    return this.request('publish_survey', { id, publicUrl });
+  },
+
+  async submitResponse(payload: any) {
+    return this.request('submit_response', payload);
+  },
+
+  async getResponses(surveyId?: string) {
+    return this.request('get_responses', { surveyId });
+  },
+
+  async getFullResponses(surveyId?: string) {
+    return this.request('get_full_responses', { surveyId });
+  },
+
+  async submitSPSSOrder(order: any) {
+    return this.request('submit_spss_order', order);
+  },
+
   async updateSystemSettings(settings: any) {
-    return this.request('save_db', { type: 'settings', data: settings });
+    return this.request('save_settings', settings);
   },
 
-  async deleteSurvey(surveyId: string) {
-    return this.request('delete_survey', { surveyId });
+  async createWorkspace(email: string) {
+    return this.request('create_workspace', { email });
   },
 
-  async saveSurveys(surveys: any) {
-    return this.request('save_db', { type: 'surveys', data: surveys });
+  async uploadFile(fileData: { fileName: string, fileType: string, base64Data: string }) {
+    return this.request('upload_file', fileData);
   },
 
-  async getDb(type: 'surveys' | 'settings') {
-    return this.request('get_db', { type });
+  async initialize() {
+    return this.request('initialize');
   }
 };

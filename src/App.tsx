@@ -17,6 +17,7 @@ import PublicPortal from './pages/PublicPortal';
 import AdminLayout from './layouts/AdminLayout';
 import Settings from './pages/Settings';
 import Surveys from './pages/Surveys';
+import SurveysResponses from './pages/SurveysResponses';
 
 export default function App() {
   const authHydrated = useAuthStore((state) => state.hasHydrated);
@@ -34,17 +35,9 @@ export default function App() {
       }
       
       try {
-        const [surveysRes, settingsRes] = await Promise.all([
-          gasService.getDb('surveys'),
-          gasService.getDb('settings')
-        ]);
-        
-        if (surveysRes.success && surveysRes.data) {
-          setSurveys(surveysRes.data);
-        }
-        
-        if (settingsRes.success && settingsRes.data) {
-          updateSettings(settingsRes.data);
+        const response = await gasService.getSurveys();
+        if (response.success && response.data) {
+          setSurveys(response.data);
         }
       } catch (error) {
         console.error('Failed to sync DB', error);
@@ -99,6 +92,7 @@ export default function App() {
         >
           <Route index element={<Dashboard />} />
           <Route path="surveys" element={<Surveys />} />
+          <Route path="responses" element={<SurveysResponses />} />
           <Route path="builder/:id?" element={<Builder />} />
           <Route path="settings" element={<Settings />} />
           <Route path="results/:id" element={<SurveyResults adminView />} />
