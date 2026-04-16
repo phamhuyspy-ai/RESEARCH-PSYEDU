@@ -158,7 +158,11 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
           </h3>
           
           <div className="space-y-8">
-            {survey.blocks.filter(b => b.type !== 'content' && b.type !== 'contact').map((block, idx) => (
+            {survey.blocks.filter(b => b.type !== 'content' && b.type !== 'contact').map((block, idx) => {
+              // The responses passed from SurveyRunner are the unmapped ones (using block.id)
+              // so we can still use block.id here to access the raw response.
+              const response = submission.responses[block.id];
+              return (
               <div key={block.id} className="pb-8 border-b border-border-main/50 last:border-0 last:pb-0">
                 <p className="text-sm font-bold text-text-main mb-4 leading-relaxed">
                   <span className="text-text-muted mr-2">#{idx + 1}</span>
@@ -169,26 +173,49 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
                     <div className="flex items-center gap-3">
                       <CheckCircle2 size={18} className="text-success-main" />
                       <span className="font-medium">
-                        {Array.isArray(submission.responses[block.id]) 
-                          ? submission.responses[block.id].map((v: any) => block.options?.find(o => o.value === v)?.label).join(', ')
-                          : block.options?.find(o => o.value === submission.responses[block.id])?.label || 'Không trả lời'}
+                        {Array.isArray(response) 
+                          ? response.map((v: any) => block.options?.find(o => o.value === v)?.label).join(', ')
+                          : block.options?.find(o => o.value === response)?.label || 'Không trả lời'}
                       </span>
                     </div>
                   ) : block.type === 'matrix' ? (
                     <div className="space-y-2">
-                      {Object.entries(submission.responses[block.id] || {}).map(([rowCode, colVal]) => (
-                        <div key={rowCode} className="flex justify-between items-center text-xs">
-                          <span className="text-text-muted">{block.matrixRows?.find(r => r.code === rowCode)?.label}</span>
-                          <span className="font-bold text-primary">{block.matrixCols?.find(c => c.value === colVal)?.label}</span>
-                        </div>
-                      ))}
+                      {Object.entries(response || {}).map(([rowCode, rowData]) => {
+                        const rowLabel = block.matrixRows?.find(r => r.code === rowCode)?.label;
+                        if (typeof rowData === 'object' && rowData !== null) {
+                          return (
+                            <div key={rowCode} className="flex flex-col gap-1 text-xs border-b border-border-main/30 pb-2 last:border-0">
+                              <span className="text-text-muted font-medium">{rowLabel}</span>
+                              <div className="pl-4 space-y-1">
+                                {Object.entries(rowData).map(([colValue, answer]) => {
+                                  const colLabel = block.matrixCols?.find(c => c.value === colValue)?.label;
+                                  if (answer === true) {
+                                    return <div key={colValue} className="font-bold text-primary flex items-center gap-1"><CheckCircle2 size={12}/> {colLabel}</div>;
+                                  } else if (answer) {
+                                    return <div key={colValue} className="text-text-main"><span className="text-text-muted mr-1">{colLabel}:</span> {String(answer)}</div>;
+                                  }
+                                  return null;
+                                })}
+                              </div>
+                            </div>
+                          );
+                        } else {
+                          // Legacy support
+                          return (
+                            <div key={rowCode} className="flex justify-between items-center text-xs border-b border-border-main/30 pb-2 last:border-0">
+                              <span className="text-text-muted">{rowLabel}</span>
+                              <span className="font-bold text-primary">{block.matrixCols?.find(c => c.value === rowData)?.label}</span>
+                            </div>
+                          );
+                        }
+                      })}
                     </div>
                   ) : (
-                    <p className="italic">{submission.responses[block.id] || 'Không trả lời'}</p>
+                    <p className="italic">{response || 'Không trả lời'}</p>
                   )}
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
 

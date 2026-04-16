@@ -42,8 +42,11 @@ const SurveyRunner: React.FC = () => {
 
   const handleNext = () => {
     if (currentBlockIndex === -1) {
-      if (!contactInfo.name || !contactInfo.email) {
-        alert('Vui lòng điền đầy đủ thông tin liên hệ.');
+      const contactBlock = survey?.blocks.find(b => b.type === 'contact');
+      const fields = contactBlock?.contactFields || { name: true, email: true, phone: true, org: true };
+      
+      if ((fields.name && !contactInfo.name) || (fields.email && !contactInfo.email)) {
+        alert('Vui lòng điền đầy đủ thông tin liên hệ bắt buộc.');
         return;
       }
     } else {
@@ -83,9 +86,26 @@ const SurveyRunner: React.FC = () => {
           if (option) score += (option.score || 0);
         });
       } else if (block.type === 'matrix' && typeof response === 'object') {
-        Object.values(response).forEach(val => {
-          const col = block.matrixCols?.find(c => c.value === val);
-          if (col) score += (col.score || 0);
+        Object.entries(response).forEach(([rowCode, rowData]) => {
+          if (typeof rowData === 'object' && rowData !== null) {
+            Object.entries(rowData).forEach(([colValue, answer]) => {
+              const col = block.matrixCols?.find(c => c.value === colValue);
+              if (col) {
+                const colType = col.type || 'single_choice';
+                if (colType === 'single_choice' || colType === 'multi_choice') {
+                  if (answer) score += (col.score || 0);
+                } else if (colType === 'number') {
+                  if (answer !== '') score += (col.score || 0);
+                } else if (colType === 'text') {
+                  if (answer) score += (col.score || 0);
+                }
+              }
+            });
+          } else {
+            // Legacy support
+            const col = block.matrixCols?.find(c => c.value === rowData);
+            if (col) score += (col.score || 0);
+          }
         });
       }
 
@@ -134,9 +154,24 @@ const SurveyRunner: React.FC = () => {
       const answer = responses[block.id];
       if (answer !== undefined) {
         if (block.type === 'matrix' && typeof answer === 'object') {
-          // Flatten matrix answers: { "R1": "C1" } -> { "Q1_R1": "C1" }
+          // Flatten matrix answers: { "R1": { "C1": true, "C2": "text" } } -> { "Q1_R1_C1": true, "Q1_R1_C2": "text" }
+          // Legacy: { "R1": "C1" } -> { "Q1_R1": "C1" }
           Object.keys(answer).forEach(rowCode => {
-            mappedResponses[`${block.code}_${rowCode}`] = answer[rowCode];
+            const rowData = answer[rowCode];
+            if (typeof rowData === 'object' && rowData !== null) {
+              Object.keys(rowData).forEach(colValue => {
+                if (rowData[colValue] === true) {
+                   mappedResponses[`${block.code}_${rowCode}`] = colValue; // For single/multi choice, just store the colValue if true. Wait, if multiple are true, it overwrites?
+                   // Actually, if it's multi choice, we should probably join them or store separately.
+                   // Let's store as `${block.code}_${rowCode}_${colValue}` = true/text
+                   mappedResponses[`${block.code}_${rowCode}_${colValue}`] = rowData[colValue];
+                } else if (rowData[colValue]) {
+                   mappedResponses[`${block.code}_${rowCode}_${colValue}`] = rowData[colValue];
+                }
+              });
+            } else {
+              mappedResponses[`${block.code}_${rowCode}`] = rowData;
+            }
           });
         } else if (block.type === 'multi_choice' && Array.isArray(answer)) {
           // Join multi-choice arrays into a comma-separated string
@@ -193,6 +228,8 @@ const SurveyRunner: React.FC = () => {
   const currentBlock = survey.blocks[currentBlockIndex];
   const isLastBlock = currentBlockIndex === survey.blocks.length - 1;
   const branding = survey.branding || { primaryColor: '#3b82f6', backgroundColor: '#f8fafc' };
+  const contactBlock = survey.blocks.find(b => b.type === 'contact');
+  const contactFields = contactBlock?.contactFields || { name: true, email: true, phone: true, org: true };
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ backgroundColor: branding.backgroundColor }}>
@@ -210,7 +247,7 @@ const SurveyRunner: React.FC = () => {
             ) : (
               <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: branding.primaryColor }}>P</div>
             )}
-            <span className="font-bold text-text-main tracking-tight">{globalSettings.organizationName}</span>
+            <span className="font-bold text-text-main tracking-tight">{globalSettings.orgName}</span>
           </div>
           <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-bg-main px-2 py-1 rounded">
             {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${survey.blocks.length}`}
@@ -244,50 +281,58 @@ const SurveyRunner: React.FC = () => {
                   <Info size={14} /> Thông tin người tham gia
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Họ và tên *</label>
-                    <input
-                      type="text"
-                      value={contactInfo.name}
-                      onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
-                      className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
-                      style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
-                      placeholder="Nguyễn Văn A"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Email *</label>
-                    <input
-                      type="email"
-                      value={contactInfo.email}
-                      onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
-                      className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
-                      style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
-                      placeholder="email@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Số điện thoại</label>
-                    <input
-                      type="tel"
-                      value={contactInfo.phone}
-                      onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
-                      className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
-                      style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
-                      placeholder="090..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Đơn vị / Tổ chức</label>
-                    <input
-                      type="text"
-                      value={contactInfo.org}
-                      onChange={(e) => setContactInfo({ ...contactInfo, org: e.target.value })}
-                      className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
-                      style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
-                      placeholder="Tên trường, công ty..."
-                    />
-                  </div>
+                  {contactFields.name && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Họ và tên *</label>
+                      <input
+                        type="text"
+                        value={contactInfo.name}
+                        onChange={(e) => setContactInfo({ ...contactInfo, name: e.target.value })}
+                        className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
+                        style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
+                        placeholder="Nguyễn Văn A"
+                      />
+                    </div>
+                  )}
+                  {contactFields.email && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Email *</label>
+                      <input
+                        type="email"
+                        value={contactInfo.email}
+                        onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                        className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
+                        style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                  )}
+                  {contactFields.phone && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Số điện thoại</label>
+                      <input
+                        type="tel"
+                        value={contactInfo.phone}
+                        onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                        className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
+                        style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
+                        placeholder="090..."
+                      />
+                    </div>
+                  )}
+                  {contactFields.org && (
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Đơn vị / Tổ chức</label>
+                      <input
+                        type="text"
+                        value={contactInfo.org}
+                        onChange={(e) => setContactInfo({ ...contactInfo, org: e.target.value })}
+                        className="w-full p-4 bg-bg-main border border-border-main rounded-2xl focus:ring-2 outline-none transition-all"
+                        style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
+                        placeholder="Tên trường, công ty..."
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -378,30 +423,113 @@ const SurveyRunner: React.FC = () => {
                         {currentBlock.matrixRows?.map((row) => (
                           <tr key={row.code} className="border-b border-border-main/50 last:border-0">
                             <td className="p-4 text-sm font-bold text-text-main">{row.label}</td>
-                            {currentBlock.matrixCols?.map((col) => (
-                              <td key={col.value} className="p-4 text-center">
-                                <button
-                                  onClick={() => {
-                                    const currentMatrix = responses[currentBlock.id] || {};
-                                    setResponses({ 
-                                      ...responses, 
-                                      [currentBlock.id]: { ...currentMatrix, [row.code]: col.value } 
-                                    });
-                                  }}
-                                  className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
-                                    responses[currentBlock.id]?.[row.code] === col.value
-                                      ? 'border-primary bg-primary'
-                                      : 'border-border-main hover:border-primary/50'
-                                  }`}
-                                  style={{ 
-                                    borderColor: responses[currentBlock.id]?.[row.code] === col.value ? branding.primaryColor : undefined,
-                                    backgroundColor: responses[currentBlock.id]?.[row.code] === col.value ? branding.primaryColor : undefined
-                                  } as any}
-                                >
-                                  {responses[currentBlock.id]?.[row.code] === col.value && <div className="w-2 h-2 bg-white rounded-full" />}
-                                </button>
-                              </td>
-                            ))}
+                            {currentBlock.matrixCols?.map((col) => {
+                              const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
+                                                (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
+                              const colType = col.type || 'single_choice';
+
+                              return (
+                                <td key={col.value} className="p-4 text-center">
+                                  {colType === 'single_choice' && (
+                                    <button
+                                      onClick={() => {
+                                        const currentMatrix = responses[currentBlock.id] || {};
+                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                        
+                                        // Clear other single_choice columns in this row
+                                        currentBlock.matrixCols?.forEach(c => {
+                                          if ((c.type || 'single_choice') === 'single_choice') {
+                                            delete currentRowData[c.value];
+                                          }
+                                        });
+                                        
+                                        currentRowData[col.value] = true;
+
+                                        setResponses({ 
+                                          ...responses, 
+                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                        });
+                                      }}
+                                      className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
+                                        cellValue === true
+                                          ? 'border-primary bg-primary'
+                                          : 'border-border-main hover:border-primary/50'
+                                      }`}
+                                      style={{ 
+                                        borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                        backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                      } as any}
+                                    >
+                                      {cellValue === true && <div className="w-2 h-2 bg-white rounded-full" />}
+                                    </button>
+                                  )}
+                                  {colType === 'multi_choice' && (
+                                    <button
+                                      onClick={() => {
+                                        const currentMatrix = responses[currentBlock.id] || {};
+                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                        
+                                        if (currentRowData[col.value]) {
+                                          delete currentRowData[col.value];
+                                        } else {
+                                          currentRowData[col.value] = true;
+                                        }
+
+                                        setResponses({ 
+                                          ...responses, 
+                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                        });
+                                      }}
+                                      className={`w-6 h-6 rounded border-2 mx-auto transition-all flex items-center justify-center ${
+                                        cellValue === true
+                                          ? 'border-primary bg-primary'
+                                          : 'border-border-main hover:border-primary/50'
+                                      }`}
+                                      style={{ 
+                                        borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                        backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                      } as any}
+                                    >
+                                      {cellValue === true && <CheckCircle2 size={14} className="text-white" />}
+                                    </button>
+                                  )}
+                                  {colType === 'text' && (
+                                    <input
+                                      type="text"
+                                      value={cellValue as string || ''}
+                                      onChange={(e) => {
+                                        const currentMatrix = responses[currentBlock.id] || {};
+                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                        currentRowData[col.value] = e.target.value;
+                                        setResponses({ 
+                                          ...responses, 
+                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                        });
+                                      }}
+                                      className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                      placeholder="Nhập..."
+                                    />
+                                  )}
+                                  {colType === 'number' && (
+                                    <input
+                                      type="number"
+                                      value={cellValue as string || ''}
+                                      onChange={(e) => {
+                                        const currentMatrix = responses[currentBlock.id] || {};
+                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                        currentRowData[col.value] = e.target.value;
+                                        setResponses({ 
+                                          ...responses, 
+                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                        });
+                                      }}
+                                      className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                      placeholder="0"
+                                    />
+                                  )}
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>

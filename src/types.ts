@@ -2,9 +2,63 @@
 export type Role = 'super_admin' | 'manager' | 'user';
 
 export interface User {
+  id?: string;
   email: string;
   role: Role;
   name: string;
+  password?: string;
+}
+
+export interface SocialLinks {
+  website?: string;
+  facebook?: string;
+  youtube?: string;
+  tiktok?: string;
+}
+
+export interface ThemeConfig {
+  primaryColor: string;
+  secondaryColor: string;
+  backgroundColor: string;
+  textColor: string;
+  linkColor: string;
+  hoverColor: string;
+  fontFamily: string;
+}
+
+export interface CTASettings {
+  type: string;
+  label: string;
+  url: string;
+  showInResults: boolean;
+  showInPdf: boolean;
+  showInEmail: boolean;
+}
+
+export interface AppSettings {
+  appName: string;
+  orgName: string;
+  address: string;
+  contactEmail: string;
+  notifyEmail: string;
+  phone: string;
+  logoUrl: string;
+  socialLinks: SocialLinks;
+  theme: ThemeConfig;
+  aiConfig: {
+    enabled: boolean;
+    provider: 'gemini' | 'openai';
+    apiKey: string;
+    model: string;
+  };
+  publicRuntime: {
+    showResults: boolean;
+    requirePersonalInfo: boolean;
+    sendEmail: boolean;
+    requireConsent: boolean;
+  };
+  cta: CTASettings;
+  users: User[];
 }
 
 export interface ScoreGroup {
@@ -35,13 +89,21 @@ export interface SurveyBlock {
   visible?: boolean;
   options?: { label: string; value: string; score?: number }[];
   matrixRows?: { label: string; code: string }[];
-  matrixCols?: { label: string; value: string; score?: number }[];
+  matrixCols?: { label: string; value: string; score?: number; type?: 'single_choice' | 'multi_choice' | 'text' | 'number' }[];
   scoreEnabled?: boolean;
   scoreGroupCode?: string;
   reverseScore?: boolean;
   weight?: number;
   minScore?: number;
   maxScore?: number;
+  // Contact specific
+  contactFields?: {
+    name: boolean;
+    email: boolean;
+    phone: boolean;
+    org: boolean;
+    customFields?: { id: string; label: string; required: boolean }[];
+  };
 }
 
 export interface Survey {

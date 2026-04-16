@@ -10,7 +10,11 @@ import {
   LogOut, 
   Menu, 
   X,
-  ClipboardList
+  ClipboardList,
+  Key,
+  Loader2,
+  AlertCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { useState } from 'react';
 import { clsx, type ClassValue } from 'clsx';
@@ -23,14 +27,55 @@ function cn(...inputs: ClassValue[]) {
 
 const AdminLayout: React.FC = () => {
   const { user, logout } = useAuthStore();
-  const { organizationName, logoUrl } = useSettingsStore();
+  const { orgName, logoUrl } = useSettingsStore();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordData, setPasswordData] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/admin/login');
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Mật khẩu mới không khớp.');
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('Mật khẩu mới phải có ít nhất 6 ký tự.');
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // Assuming gasService.updatePassword exists
+      const response = await import('../services/gasService').then(m => m.gasService.updatePassword(passwordData.oldPassword, passwordData.newPassword));
+      if (response.success) {
+        setPasswordSuccess('Đổi mật khẩu thành công.');
+        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+        setTimeout(() => {
+          setIsPasswordModalOpen(false);
+          setPasswordSuccess('');
+        }, 2000);
+      } else {
+        setPasswordError(response.message || 'Đổi mật khẩu thất bại. Vui lòng kiểm tra lại mật khẩu cũ.');
+      }
+    } catch (err) {
+      setPasswordError('Đã có lỗi xảy ra khi kết nối với máy chủ.');
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const navItems = [
@@ -117,14 +162,35 @@ const AdminLayout: React.FC = () => {
             {navItems.find(i => i.path === location.pathname)?.label || 'System Overview'}
           </h1>
           <div className="flex items-center gap-4">
-            <div className="user-pill flex items-center gap-2.5 px-3 py-1.5 bg-white border border-border-main rounded-full text-[13px] font-medium shadow-sm">
-              <div className="w-6 h-6 bg-gray-300 rounded-full" />
-              <span>{user?.email}</span>
-              <span className="text-text-muted text-[10px]">▼</span>
+            <div className="relative group">
+              <div className="user-pill flex items-center gap-2.5 px-3 py-1.5 bg-white border border-border-main rounded-full text-[13px] font-medium shadow-sm cursor-pointer hover:bg-gray-50">
+                <div className="w-6 h-6 bg-primary/10 text-primary flex items-center justify-center rounded-full font-bold">
+                  {user?.name?.charAt(0) || user?.email?.charAt(0)}
+                </div>
+                <span>{user?.name || user?.email}</span>
+                <span className="text-text-muted text-[10px]">▼</span>
+              </div>
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-border-main py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                <div className="px-4 py-2 border-b border-border-main">
+                  <p className="text-xs font-bold text-text-main truncate">{user?.name}</p>
+                  <p className="text-[10px] text-text-muted truncate">{user?.email}</p>
+                </div>
+                <button
+                  onClick={() => setIsPasswordModalOpen(true)}
+                  className="w-full text-left px-4 py-2 text-sm text-text-main hover:bg-bg-main flex items-center gap-2"
+                >
+                  <Key size={14} />
+                  Đổi mật khẩu
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                >
+                  <LogOut size={14} />
+                  Đăng xuất
+                </button>
+              </div>
             </div>
-            <button onClick={handleLogout} className="text-text-muted hover:text-red-600 transition-colors">
-              <LogOut size={18} />
-            </button>
           </div>
         </header>
         
@@ -132,6 +198,89 @@ const AdminLayout: React.FC = () => {
           <Outlet />
         </div>
       </main>
+
+      {/* Change Password Modal */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-border-main flex items-center justify-between">
+              <h3 className="text-lg font-bold text-text-main flex items-center gap-2">
+                <Key size={20} className="text-primary" />
+                Đổi mật khẩu
+              </h3>
+              <button 
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="text-text-muted hover:text-text-main transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleChangePassword} className="p-6 space-y-4">
+              {passwordError && (
+                <div className="bg-red-50 border border-red-100 p-3 rounded-lg flex items-start gap-3">
+                  <AlertCircle className="text-red-500 shrink-0" size={18} />
+                  <p className="text-xs text-red-700 font-medium">{passwordError}</p>
+                </div>
+              )}
+              {passwordSuccess && (
+                <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start gap-3">
+                  <CheckCircle2 className="text-green-500 shrink-0" size={18} />
+                  <p className="text-xs text-green-700 font-medium">{passwordSuccess}</p>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Mật khẩu hiện tại</label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.oldPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Mật khẩu mới</label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Xác nhận mật khẩu mới</label>
+                <input
+                  type="password"
+                  required
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                  className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
+              
+              <div className="pt-4 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-text-muted hover:text-text-main transition-colors"
+                >
+                  Hủy
+                </button>
+                <button
+                  type="submit"
+                  disabled={isChangingPassword}
+                  className="btn-primary px-6 py-2 flex items-center gap-2"
+                >
+                  {isChangingPassword ? <Loader2 size={16} className="animate-spin" /> : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

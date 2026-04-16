@@ -10,8 +10,12 @@ import {
   CheckCircle2,
   Palette,
   Layout,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Share2,
+  Copy,
+  Download
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { gasService } from '../services/gasService';
 
 // Components
@@ -35,6 +39,8 @@ const Builder: React.FC = () => {
     updateBlock, 
     removeBlock, 
     reorderBlocks,
+    moveBlockUp,
+    moveBlockDown,
     addScoreGroup,
     updateScoreGroup,
     removeScoreGroup,
@@ -47,7 +53,22 @@ const Builder: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'builder' | 'branding'>('builder');
+  const [activeTab, setActiveTab] = useState<'builder' | 'branding' | 'publish'>('builder');
+  const [isToolboxOpen, setIsToolboxOpen] = useState(true);
+
+  // Auto-close toolbox on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsToolboxOpen(false);
+      } else {
+        setIsToolboxOpen(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -203,18 +224,33 @@ const Builder: React.FC = () => {
           <Palette size={14} />
           Thương hiệu & Giao diện
         </button>
+        <button
+          onClick={() => setActiveTab('publish')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+            activeTab === 'publish' ? 'bg-primary text-white shadow-sm' : 'text-text-muted hover:bg-bg-main'
+          }`}
+        >
+          <Share2 size={14} />
+          Xuất bản & Chia sẻ
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="flex gap-6 items-start relative">
         {activeTab === 'builder' ? (
           <>
             {/* Left: Toolbox */}
-            <div className="lg:col-span-2">
-              <Toolbox onAddBlock={handleAddBlock} />
+            <div className={`transition-all duration-300 ease-in-out ${
+              isToolboxOpen ? 'w-64 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full overflow-hidden'
+            } lg:relative absolute z-20 bg-bg-main lg:bg-transparent h-full`}>
+              <div className="w-64">
+                <Toolbox onAddBlock={handleAddBlock} />
+              </div>
             </div>
 
             {/* Center: Canvas */}
-            <div className="lg:col-span-6">
+            <div className={`flex-1 transition-all duration-300 ease-in-out ${
+              activeBlockId ? 'lg:mr-80' : ''
+            }`}>
               <Canvas 
                 blocks={activeSurvey.blocks}
                 activeBlockId={activeBlockId}
@@ -222,19 +258,38 @@ const Builder: React.FC = () => {
                 onRemoveBlock={removeBlock}
                 onDuplicateBlock={handleDuplicateBlock}
                 onUpdateBlock={updateBlock}
+                onMoveBlockUp={moveBlockUp}
+                onMoveBlockDown={moveBlockDown}
               />
             </div>
 
             {/* Right: ConfigPanel */}
-            <div className="lg:col-span-4">
-              <ConfigPanel 
-                block={activeBlock}
-                scoreGroups={activeSurvey.scoreGroups}
-                onUpdateBlock={updateBlock}
-              />
-            </div>
+            {activeBlockId && (
+              <div className="w-80 absolute right-0 top-0 z-10 hidden lg:block animate-fade-in">
+                <ConfigPanel 
+                  block={activeBlock}
+                  scoreGroups={activeSurvey.scoreGroups}
+                  onUpdateBlock={updateBlock}
+                  onClose={() => setActiveBlockId(null)}
+                />
+              </div>
+            )}
+            
+            {/* Mobile Config Panel Overlay */}
+            {activeBlockId && (
+              <div className="lg:hidden fixed inset-0 z-50 bg-black/50 flex justify-end">
+                <div className="w-full max-w-sm bg-bg-main h-full overflow-y-auto animate-slide-in-right p-4">
+                  <ConfigPanel 
+                    block={activeBlock}
+                    scoreGroups={activeSurvey.scoreGroups}
+                    onUpdateBlock={updateBlock}
+                    onClose={() => setActiveBlockId(null)}
+                  />
+                </div>
+              </div>
+            )}
           </>
-        ) : (
+        ) : activeTab === 'branding' ? (
           <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="card-panel space-y-6">
               <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
@@ -326,7 +381,117 @@ const Builder: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        ) : activeTab === 'publish' ? (
+          <div className="lg:col-span-12 grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="card-panel space-y-6">
+              <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
+                <Share2 size={16} className="text-primary" />
+                Xuất bản & Chia sẻ
+              </h3>
+              
+              {activeSurvey.status !== 'published' ? (
+                <div className="text-center py-8 text-text-muted">
+                  <AlertCircle size={32} className="mx-auto mb-2 opacity-50" />
+                  <p className="text-xs">Bảng hỏi này đang ở trạng thái Nháp. Vui lòng lưu và xuất bản để lấy link chia sẻ.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Link trực tiếp</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${window.location.origin}/s/${activeSurvey.id}`}
+                        className="flex-1 px-2 py-1.5 bg-bg-main border border-border-main rounded text-xs text-text-muted"
+                      />
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/s/${activeSurvey.id}`);
+                          setSaveMessage({ text: 'Đã sao chép link', type: 'success' });
+                          setTimeout(() => setSaveMessage(null), 3000);
+                        }}
+                        className="p-1.5 bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+                        title="Sao chép link"
+                      >
+                        <Copy size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Mã nhúng (Iframe)</label>
+                    <div className="relative">
+                      <textarea
+                        readOnly
+                        value={`<iframe src="${window.location.origin}/s/${activeSurvey.id}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`}
+                        className="w-full h-24 px-2 py-1.5 bg-bg-main border border-border-main rounded text-[10px] font-mono text-text-muted resize-none"
+                      />
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(`<iframe src="${window.location.origin}/s/${activeSurvey.id}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`);
+                          setSaveMessage({ text: 'Đã sao chép mã nhúng', type: 'success' });
+                          setTimeout(() => setSaveMessage(null), 3000);
+                        }}
+                        className="absolute top-2 right-2 p-1 bg-white border border-border-main text-text-muted rounded hover:text-primary transition-colors"
+                        title="Sao chép mã nhúng"
+                      >
+                        <Copy size={12} />
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-text-muted mt-1">Dùng mã này để nhúng bảng hỏi vào website của bạn.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {activeSurvey.status === 'published' && (
+              <div className="card-panel space-y-6 flex flex-col items-center justify-center text-center">
+                <h3 className="text-sm font-bold text-text-main flex items-center gap-2 w-full justify-start">
+                  <Share2 size={16} className="text-primary" />
+                  Mã QR
+                </h3>
+                <div className="bg-bg-main border border-border-main rounded-lg p-8 flex flex-col items-center justify-center gap-6 w-full max-w-sm">
+                  <div className="bg-white p-4 rounded-xl shadow-sm border border-border-main">
+                    <QRCodeSVG 
+                      id="builder-qr-code"
+                      value={`${window.location.origin}/s/${activeSurvey.id}`} 
+                      size={200}
+                      level="H"
+                      includeMargin={true}
+                    />
+                  </div>
+                  <button 
+                    onClick={() => {
+                      const svg = document.getElementById('builder-qr-code');
+                      if (svg) {
+                        const svgData = new XMLSerializer().serializeToString(svg);
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        const img = new Image();
+                        img.onload = () => {
+                          canvas.width = img.width;
+                          canvas.height = img.height;
+                          ctx?.drawImage(img, 0, 0);
+                          const pngFile = canvas.toDataURL('image/png');
+                          const downloadLink = document.createElement('a');
+                          downloadLink.download = `QR_${activeSurvey.id}.png`;
+                          downloadLink.href = `${pngFile}`;
+                          downloadLink.click();
+                        };
+                        img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-primary/90 transition-all shadow-sm"
+                  >
+                    <Download size={16} />
+                    Tải xuống QR Code
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
 
       {/* Modals */}

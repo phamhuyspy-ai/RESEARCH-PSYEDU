@@ -6,17 +6,21 @@ import {
   GripVertical,
   AlertCircle,
   CheckCircle2,
-  HelpCircle
+  HelpCircle,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { SurveyBlock } from '../../types';
 
 interface CanvasProps {
   blocks: SurveyBlock[];
   activeBlockId: string | null;
-  onSelectBlock: (id: string) => void;
+  onSelectBlock: (id: string | null) => void;
   onRemoveBlock: (id: string) => void;
   onDuplicateBlock: (block: SurveyBlock) => void;
   onUpdateBlock: (block: SurveyBlock) => void;
+  onMoveBlockUp: (id: string) => void;
+  onMoveBlockDown: (id: string) => void;
 }
 
 const Canvas: React.FC<CanvasProps> = ({
@@ -25,7 +29,9 @@ const Canvas: React.FC<CanvasProps> = ({
   onSelectBlock,
   onRemoveBlock,
   onDuplicateBlock,
-  onUpdateBlock
+  onUpdateBlock,
+  onMoveBlockUp,
+  onMoveBlockDown
 }) => {
   if (blocks.length === 0) {
     return (
@@ -42,11 +48,14 @@ const Canvas: React.FC<CanvasProps> = ({
   }
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="space-y-4 pb-20 min-h-[50vh]" onClick={() => onSelectBlock(null)}>
       {blocks.map((block, index) => (
         <div
           key={block.id}
-          onClick={() => onSelectBlock(block.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectBlock(block.id);
+          }}
           className={`bg-white rounded-2xl border transition-all cursor-pointer group relative ${
             activeBlockId === block.id 
               ? 'border-primary shadow-lg ring-4 ring-primary/5' 
@@ -82,6 +91,22 @@ const Canvas: React.FC<CanvasProps> = ({
 
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button 
+                  onClick={(e) => { e.stopPropagation(); onMoveBlockUp(block.id); }}
+                  disabled={index === 0}
+                  className="p-2 text-text-muted hover:text-primary hover:bg-primary/5 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                  title="Di chuyển lên"
+                >
+                  <ArrowUp size={16} />
+                </button>
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onMoveBlockDown(block.id); }}
+                  disabled={index === blocks.length - 1}
+                  className="p-2 text-text-muted hover:text-primary hover:bg-primary/5 rounded-lg transition-all disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-text-muted"
+                  title="Di chuyển xuống"
+                >
+                  <ArrowDown size={16} />
+                </button>
+                <button 
                   onClick={(e) => { e.stopPropagation(); onDuplicateBlock(block); }}
                   className="p-2 text-text-muted hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
                   title="Nhân bản"
@@ -108,11 +133,10 @@ const Canvas: React.FC<CanvasProps> = ({
 
               {block.type === 'contact' && (
                 <div className="flex flex-wrap gap-2">
-                  {['Họ tên', 'SĐT', 'Email', 'Đơn vị'].map(f => (
-                    <span key={f} className="px-2 py-1 bg-bg-main rounded text-[10px] font-medium text-text-muted border border-border-main">
-                      {f}
-                    </span>
-                  ))}
+                  {(block.contactFields?.name ?? true) && <span className="px-2 py-1 bg-bg-main rounded text-[10px] font-medium text-text-muted border border-border-main">Họ tên</span>}
+                  {(block.contactFields?.phone ?? true) && <span className="px-2 py-1 bg-bg-main rounded text-[10px] font-medium text-text-muted border border-border-main">SĐT</span>}
+                  {(block.contactFields?.email ?? true) && <span className="px-2 py-1 bg-bg-main rounded text-[10px] font-medium text-text-muted border border-border-main">Email</span>}
+                  {(block.contactFields?.org ?? true) && <span className="px-2 py-1 bg-bg-main rounded text-[10px] font-medium text-text-muted border border-border-main">Đơn vị</span>}
                 </div>
               )}
 

@@ -18,6 +18,7 @@ interface BuilderHeaderProps {
   onSave: (publish?: boolean) => void;
   onUpdateMeta: (meta: Partial<Survey>) => void;
   onOpenResultConfig: () => void;
+  onToggleToolbox?: () => void;
 }
 
 const BuilderHeader: React.FC<BuilderHeaderProps> = ({ 
@@ -25,13 +26,22 @@ const BuilderHeader: React.FC<BuilderHeaderProps> = ({
   isSaving, 
   onSave, 
   onUpdateMeta,
-  onOpenResultConfig
+  onOpenResultConfig,
+  onToggleToolbox
 }) => {
   const navigate = useNavigate();
 
   return (
     <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-border-main shadow-sm sticky top-0 z-30">
       <div className="flex items-center gap-4">
+        {onToggleToolbox && (
+          <button 
+            onClick={onToggleToolbox}
+            className="p-2 hover:bg-bg-main rounded-lg text-text-muted transition-colors lg:hidden"
+          >
+            <Settings size={20} />
+          </button>
+        )}
         <button 
           onClick={() => navigate('/admin')}
           className="p-2 hover:bg-bg-main rounded-lg text-text-muted transition-colors"

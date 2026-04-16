@@ -18,7 +18,7 @@ import {
 
 const PublicPortal: React.FC = () => {
   const { surveys } = useAppStore();
-  const { organizationName } = useSettingsStore();
+  const { orgName } = useSettingsStore();
 
   const activeSurveys = surveys.filter(s => s.status === 'published' && s.collectionStatus === 'open');
 
@@ -30,7 +30,7 @@ const PublicPortal: React.FC = () => {
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
-              <span className="text-lg font-bold tracking-tight">{organizationName}</span>
+              <span className="text-lg font-bold tracking-tight">{orgName}</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
               <a href="#surveys" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">Bảng hỏi</a>
@@ -131,7 +131,7 @@ const PublicPortal: React.FC = () => {
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
-                <span className="text-lg font-bold tracking-tight">{organizationName}</span>
+                <span className="text-lg font-bold tracking-tight">{orgName}</span>
               </div>
               <p className="text-sm text-text-muted leading-relaxed">
                 Nền tảng chuyên nghiệp cho các hoạt động nghiên cứu và lượng giá trong lĩnh vực tâm lý giáo dục.
@@ -156,7 +156,7 @@ const PublicPortal: React.FC = () => {
           </div>
           <div className="pt-8 border-t border-border-main flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-text-muted">
-              © {new Date().getFullYear()} {organizationName}. All rights reserved.
+              © {new Date().getFullYear()} {orgName}. All rights reserved.
             </p>
             <div className="flex items-center gap-6">
               <a href="#" className="text-text-muted hover:text-primary transition-colors"><Facebook size={18} /></a>

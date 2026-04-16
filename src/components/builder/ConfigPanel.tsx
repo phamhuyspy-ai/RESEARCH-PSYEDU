@@ -10,7 +10,9 @@ import {
   Hash,
   Type,
   Eye,
-  EyeOff
+  EyeOff,
+  UserCircle,
+  X
 } from 'lucide-react';
 import { SurveyBlock, ScoreGroup } from '../../types';
 
@@ -18,25 +20,16 @@ interface ConfigPanelProps {
   block: SurveyBlock | null;
   scoreGroups: ScoreGroup[];
   onUpdateBlock: (block: SurveyBlock) => void;
+  onClose?: () => void;
 }
 
 const ConfigPanel: React.FC<ConfigPanelProps> = ({
   block,
   scoreGroups,
-  onUpdateBlock
+  onUpdateBlock,
+  onClose
 }) => {
-  if (!block) {
-    return (
-      <div className="card-panel sticky top-24 flex flex-col items-center justify-center text-center py-20">
-        <div className="w-12 h-12 bg-bg-main rounded-full flex items-center justify-center mb-4">
-          <Settings size={24} className="text-text-muted" />
-        </div>
-        <p className="text-xs text-text-muted max-w-[150px]">
-          Chọn một block trên Canvas để bắt đầu cấu hình chi tiết.
-        </p>
-      </div>
-    );
-  }
+  if (!block) return null;
 
   const handleUpdate = (updates: Partial<SurveyBlock>) => {
     onUpdateBlock({ ...block, ...updates });
@@ -49,6 +42,13 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           <Settings size={16} className="text-primary" />
           Cấu hình Block
         </h3>
+        {onClose && (
+          <button onClick={onClose} className="p-1 text-text-muted hover:text-text-main rounded-lg hover:bg-bg-main transition-all">
+            <X size={16} />
+          </button>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-text-muted uppercase tracking-widest">
           ID: {block.id}
         </span>
@@ -130,6 +130,41 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Contact Fields Configuration */}
+      {block.type === 'contact' && (
+        <div className="pt-4 border-t border-border-main space-y-4">
+          <h4 className="text-[10px] font-bold text-text-muted uppercase tracking-widest flex items-center gap-1">
+            <UserCircle size={12} /> Cấu hình trường thông tin
+          </h4>
+          
+          <div className="space-y-3">
+            {['name', 'email', 'phone', 'org'].map((field) => (
+              <div key={field} className="flex items-center justify-between">
+                <span className="text-xs font-medium text-text-main">
+                  {field === 'name' ? 'Họ và tên' : 
+                   field === 'email' ? 'Email' : 
+                   field === 'phone' ? 'Số điện thoại' : 'Cơ quan/Tổ chức'}
+                </span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={block.contactFields?.[field as keyof typeof block.contactFields] ?? true}
+                    onChange={(e) => {
+                      const currentFields = block.contactFields || { name: true, email: true, phone: true, org: true };
+                      handleUpdate({ 
+                        contactFields: { ...currentFields, [field]: e.target.checked } 
+                      });
+                    }}
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Options Configuration */}
       {(block.type === 'single_choice' || block.type === 'multi_choice' || block.type === 'likert') && (
@@ -270,6 +305,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
                     className="flex-1 px-2 py-1.5 bg-bg-main border border-border-main rounded text-[11px] focus:border-primary outline-none"
                     placeholder="Nhãn cột"
                   />
+                  <select
+                    value={col.type || 'single_choice'}
+                    onChange={(e) => {
+                      const newCols = [...(block.matrixCols || [])];
+                      newCols[idx].type = e.target.value as any;
+                      handleUpdate({ matrixCols: newCols });
+                    }}
+                    className="px-2 py-1.5 bg-bg-main border border-border-main rounded text-[11px] focus:border-primary outline-none w-24"
+                  >
+                    <option value="single_choice">Chọn 1</option>
+                    <option value="multi_choice">Chọn nhiều</option>
+                    <option value="text">Văn bản</option>
+                    <option value="number">Số</option>
+                  </select>
                   <input
                     type="number"
                     value={col.score || 0}

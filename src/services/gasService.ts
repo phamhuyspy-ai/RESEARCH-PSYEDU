@@ -33,12 +33,12 @@ export const gasService = {
       const result = await response.json();
       return result;
     } catch (error) {
-      console.error('GAS Request Error:', error);
+      console.error('GAS Request Error (Full):', error);
       
       let errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
       // "Failed to fetch" usually indicates a CORS error or network issue with GAS
-      if (errorMessage === 'Failed to fetch') {
+      if (errorMessage.includes('Failed to fetch')) {
         errorMessage = 'Lỗi kết nối (CORS). Vui lòng đảm bảo Google Apps Script đã được Deploy dưới dạng Web App với quyền truy cập "Anyone" (Bất kỳ ai).';
       }
 
@@ -67,6 +67,10 @@ export const gasService = {
 
   async updatePassword(oldPassword: string, newPassword: string) {
     return this.request('update_password', { oldPassword, newPassword });
+  },
+
+  async recoverPassword(email: string) {
+    return this.request('recover_password', { email });
   },
 
   async updateSystemSettings(settings: any) {

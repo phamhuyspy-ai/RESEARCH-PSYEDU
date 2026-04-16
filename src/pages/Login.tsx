@@ -17,7 +17,9 @@ const Login: React.FC = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -91,6 +93,43 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSuccessMsg('');
+
+    if (!inputGasUrl) {
+      setError('Vui lòng cấu hình GAS URL trước.');
+      setShowGasConfig(true);
+      return;
+    }
+
+    if (inputGasUrl !== gasUrl) {
+      updateSettings({ gasUrl: inputGasUrl });
+    }
+
+    if (!email) {
+      setError('Vui lòng nhập email của bạn.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const response = await gasService.recoverPassword(email);
+      if (response.success) {
+        setSuccessMsg('Mật khẩu mới đã được gửi vào email của bạn. Vui lòng kiểm tra hộp thư.');
+        setIsForgotPassword(false);
+      } else {
+        setError(response.message || 'Không thể khôi phục mật khẩu. Vui lòng kiểm tra lại email.');
+      }
+    } catch (err) {
+      setError('Đã có lỗi xảy ra khi kết nối với máy chủ.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg-main flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -100,20 +139,27 @@ const Login: React.FC = () => {
           </div>
         </div>
         <h2 className="mt-6 text-center text-2xl font-bold text-text-main tracking-tight">
-          PsychAdmin Login
+          {isForgotPassword ? 'Khôi phục mật khẩu' : 'PsychAdmin Login'}
         </h2>
         <p className="mt-2 text-center text-sm text-text-muted">
-          System Overview & Management
+          {isForgotPassword ? 'Nhập email để nhận mật khẩu mới' : 'System Overview & Management'}
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow-sm sm:rounded-xl sm:px-10 border border-border-main">
-          <form className="space-y-6" onSubmit={handleSubmit}>
+          <form className="space-y-6" onSubmit={isForgotPassword ? handleForgotPassword : handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-100 p-3 rounded-lg flex items-start gap-3">
                 <AlertCircle className="text-red-500 shrink-0" size={18} />
                 <p className="text-xs text-red-700 font-medium">{error}</p>
+              </div>
+            )}
+            
+            {successMsg && (
+              <div className="bg-green-50 border border-green-100 p-3 rounded-lg flex items-start gap-3">
+                <CheckCircle2 className="text-green-500 shrink-0" size={18} />
+                <p className="text-xs text-green-700 font-medium">{successMsg}</p>
               </div>
             )}
 
@@ -202,48 +248,65 @@ const Login: React.FC = () => {
               </div>
             </div>
 
-            <div>
-              <label htmlFor="password" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
-                Password
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Key className="h-4 w-4 text-text-muted" />
+            {!isForgotPassword && (
+              <>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label htmlFor="password" className="block text-xs font-bold text-text-muted uppercase tracking-wider">
+                      Password
+                    </label>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setIsForgotPassword(true);
+                        setError('');
+                        setSuccessMsg('');
+                      }}
+                      className="text-[10px] font-bold text-primary hover:underline"
+                    >
+                      Quên mật khẩu?
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Key className="h-4 w-4 text-text-muted" />
+                    </div>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required={!isForgotPassword}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
                 </div>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label htmlFor="pin" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
-                Verification PIN
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-4 w-4 text-text-muted" />
+                <div>
+                  <label htmlFor="pin" className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">
+                    Verification PIN
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-4 w-4 text-text-muted" />
+                    </div>
+                    <input
+                      id="pin"
+                      name="pin"
+                      type="text"
+                      required={!isForgotPassword}
+                      maxLength={6}
+                      value={pin}
+                      onChange={(e) => setPin(e.target.value)}
+                      className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      placeholder="123456"
+                    />
+                  </div>
                 </div>
-                <input
-                  id="pin"
-                  name="pin"
-                  type="text"
-                  required
-                  maxLength={6}
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  className="appearance-none block w-full pl-10 px-3 py-2.5 border border-border-main rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                  placeholder="123456"
-                />
-              </div>
-            </div>
+              </>
+            )}
 
             <div>
               <button
@@ -253,11 +316,29 @@ const Login: React.FC = () => {
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin h-5 w-5" />
+                ) : isForgotPassword ? (
+                  'Gửi email khôi phục'
                 ) : (
                   'Sign In to Dashboard'
                 )}
               </button>
             </div>
+            
+            {isForgotPassword && (
+              <div className="text-center mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setError('');
+                    setSuccessMsg('');
+                  }}
+                  className="text-sm font-medium text-text-muted hover:text-primary transition-colors"
+                >
+                  Quay lại đăng nhập
+                </button>
+              </div>
+            )}
           </form>
         </div>
         
