@@ -53,8 +53,12 @@ export const gasService = {
     return this.request('login_admin', { email, password, pin });
   },
 
-  async syncSchema(survey: any) {
-    return this.request('sync_schema', { survey });
+  async syncSchema(survey: any, userEmail?: string) {
+    return this.request('sync_schema', { survey, userEmail });
+  },
+
+  async createWorkspace(email: string) {
+    return this.request('create_workspace', { email });
   },
 
   async submitData(surveyCode: string, submission: any) {

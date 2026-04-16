@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useBuilderStore } from '../stores/builderStore';
+import { useAuthStore } from '../stores/authStore';
 import { Survey, SurveyBlock, ScoreGroup, AlertRule } from '../types';
 import { 
   Loader2,
@@ -28,6 +29,7 @@ import ResultConfigModal from '../components/builder/ResultConfigModal';
 const Builder: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const { surveys, addSurvey, updateSurvey } = useAppStore();
   const { 
     activeSurvey, 
@@ -119,7 +121,7 @@ const Builder: React.FC = () => {
 
     try {
       // Sync with GAS
-      const response = await gasService.syncSchema(updatedSurvey);
+      const response = await gasService.syncSchema(updatedSurvey, user?.email);
       
       if (response.success) {
         if (id) {

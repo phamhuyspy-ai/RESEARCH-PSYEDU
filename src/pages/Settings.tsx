@@ -48,7 +48,7 @@ const Settings: React.FC = () => {
   
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [newUser, setNewUser] = useState<{ name: string, email: string, password: string, role: 'manager' | 'super_admin' }>({ name: '', email: '', password: '', role: 'manager' });
+  const [newUser, setNewUser] = useState<{ name: string, email: string, password: string, role: 'manager' | 'super_admin', workspaceType: 'shared' | 'private' }>({ name: '', email: '', password: '', role: 'manager', workspaceType: 'shared' });
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -72,16 +72,38 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleAddUser = () => {
+  const handleAddUser = async () => {
     if (!newUser.name || !newUser.email || !newUser.password) {
       setMessage({ type: 'error', text: 'Vui lòng điền đầy đủ thông tin người dùng mới.' });
       return;
     }
+
+    if (newUser.workspaceType === 'private') {
+      try {
+        const response = await import('../services/gasService').then(m => m.gasService.createWorkspace(newUser.email));
+        if (!response.success) {
+          setMessage({ type: 'error', text: 'Lỗi khi tạo không gian lưu trữ: ' + response.message });
+          return;
+        }
+      } catch (error) {
+        setMessage({ type: 'error', text: 'Lỗi kết nối khi tạo không gian lưu trữ.' });
+        return;
+      }
+    }
+
     setFormData({
       ...formData,
-      users: [...formData.users, { id: Date.now().toString(), name: newUser.name, email: newUser.email, role: newUser.role, password: newUser.password }]
+      users: [...formData.users, { 
+        id: Date.now().toString(), 
+        name: newUser.name, 
+        email: newUser.email, 
+        role: newUser.role, 
+        password: newUser.password,
+        workspaceType: newUser.workspaceType
+      }]
     });
-    setNewUser({ name: '', email: '', password: '', role: 'manager' });
+    setNewUser({ name: '', email: '', password: '', role: 'manager', workspaceType: 'shared' });
+    setMessage({ type: 'success', text: 'Đã thêm người dùng thành công.' });
   };
 
   const handleRemoveUser = (id: string) => {
@@ -536,7 +558,7 @@ const Settings: React.FC = () => {
           <h3 className="text-sm font-bold text-text-main mb-4 flex items-center gap-2">
             <Plus size={16} /> Thêm người quản lý mới
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
             <input
               type="text"
               placeholder="Họ tên"
@@ -558,6 +580,22 @@ const Settings: React.FC = () => {
               onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
               className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
             />
+            <select
+              value={newUser.role}
+              onChange={(e) => setNewUser({ ...newUser, role: e.target.value as 'manager' | 'super_admin' })}
+              className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            >
+              <option value="manager">Quản lý</option>
+              <option value="super_admin">Super Admin</option>
+            </select>
+            <select
+              value={newUser.workspaceType}
+              onChange={(e) => setNewUser({ ...newUser, workspaceType: e.target.value as 'shared' | 'private' })}
+              className="w-full px-3 py-2 border border-border-main rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            >
+              <option value="shared">Dùng chung không gian</option>
+              <option value="private">Tạo không gian mới</option>
+            </select>
           </div>
           <button onClick={handleAddUser} className="btn-primary py-2 px-4 text-sm">
             Thêm người quản lý
@@ -570,6 +608,7 @@ const Settings: React.FC = () => {
               <tr>
                 <th className="px-4 py-3">Người dùng</th>
                 <th className="px-4 py-3">Vai trò</th>
+                <th className="px-4 py-3">Không gian</th>
                 <th className="px-4 py-3 text-right">Thao tác</th>
               </tr>
             </thead>
@@ -591,6 +630,11 @@ const Settings: React.FC = () => {
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider">
                       {user.role === 'super_admin' ? <Lock size={10} /> : null}
                       {user.role === 'super_admin' ? 'Super Admin' : 'Quản lý'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-gray-100 text-gray-700 text-[10px] font-bold uppercase tracking-wider">
+                      {user.workspaceType === 'private' ? 'Không gian riêng' : 'Dùng chung'}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right">

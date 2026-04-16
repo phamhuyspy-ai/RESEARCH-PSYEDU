@@ -7,6 +7,7 @@ export interface User {
   role: Role;
   name: string;
   password?: string;
+  workspaceType?: 'shared' | 'private';
 }
 
 export interface SocialLinks {
