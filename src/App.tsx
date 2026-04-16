@@ -102,7 +102,14 @@ export default function App() {
           <Route path="surveys" element={<Surveys />} />
           <Route path="responses" element={<SurveysResponses />} />
           <Route path="builder/:id?" element={<Builder />} />
-          <Route path="settings" element={<Settings />} />
+          <Route 
+            path="settings" 
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Settings />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="results/:id" element={<SurveyResults adminView />} />
         </Route>
 

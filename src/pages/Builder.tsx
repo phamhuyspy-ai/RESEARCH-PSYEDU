@@ -118,6 +118,7 @@ const Builder: React.FC = () => {
     const updatedSurvey: Survey = {
       ...activeSurvey,
       status: publish ? 'published' : activeSurvey.status,
+      collectionStatus: publish ? 'open' : activeSurvey.collectionStatus,
       updatedAt: new Date().toISOString(),
     };
 

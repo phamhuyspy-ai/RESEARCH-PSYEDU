@@ -232,10 +232,11 @@ function saveSurvey(payload) {
   
   const id = payload.id || "SRV_" + Utilities.getUuid().substring(0, 8);
   const code = payload.code || "C" + id.substring(4);
+  const title = payload.name || payload.title || "Untitled Survey";
   const now = new Date();
   
   // 1. Manage Individual File
-  const surveyFileId = getOrCreateSurveyFile(id, code, payload.title);
+  const surveyFileId = getOrCreateSurveyFile(id, code, title);
   const surveySS = SpreadsheetApp.openById(surveyFileId);
   
   // Update Questions in the individual file
@@ -245,18 +246,25 @@ function saveSurvey(payload) {
   qSheet.appendRow(qHeaders);
   qSheet.getRange(1, 1, 1, qHeaders.length).setFontWeight("bold").setBackground("#dcfce7");
   
-  payload.questions.forEach((q, idx) => {
+  const blocks = payload.blocks || payload.questions || [];
+  blocks.forEach((q, idx) => {
     qSheet.appendRow([
-      q.id || "Q" + idx, q.code || "VAR" + idx, q.content, q.type,
-      q.required ? 1 : 0, q.weight || 1, q.group || 'default', q.isReverse ? 1 : 0,
+      q.id || "Q" + idx, 
+      q.code || "VAR" + idx, 
+      q.title || q.content || "", 
+      q.type,
+      q.required ? 1 : 0, 
+      q.weight || 1, 
+      q.scoreGroupCode || q.group || 'default', 
+      (q.reverseScore || q.isReverse) ? 1 : 0,
       JSON.stringify(q.options || [])
     ]);
   });
 
-  // Prepare SPSS Response Sheet (Wide Format)
-  const respSheet = getOrCreateSheet(surveySS, "KetQua_SPSS");
+  // Prepare Response Sheet (Wide Format)
+  const respSheet = getOrCreateSheet(surveySS, "KetQua_TongHop");
   if (respSheet.getLastRow() === 0) {
-    const respHeaders = ["ResponseID", "Timestamp", "Name", "Email", "Phone", "TotalScore", ...payload.questions.map(q => q.code || q.id)];
+    const respHeaders = ["ResponseID", "Timestamp", "Name", "Email", "Phone", "TotalScore", ...blocks.map(q => q.code || q.id)];
     respSheet.appendRow(respHeaders);
     respSheet.getRange(1, 1, 1, respHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
   }
@@ -264,9 +272,16 @@ function saveSurvey(payload) {
   // 2. Update Master Registry
   const surveyData = findRowByValue(sSheet, 0, id);
   const row = [
-    id, code, payload.title, surveyFileId,
+    id, code, title, surveyFileId,
     payload.status || 'draft', payload.category || 'general', 
-    payload.thumbnail || '', JSON.stringify(payload.settings || {}),
+    payload.thumbnail || '', JSON.stringify({
+      settings: payload.settings || {},
+      branding: payload.branding || {},
+      scoreGroups: payload.scoreGroups || [],
+      description: payload.description || "",
+      type: payload.type || "assessment",
+      collectionStatus: payload.collectionStatus || 'closed'
+    }),
     surveyData ? surveyData.rowValues[8] : now, now
   ];
   
@@ -292,22 +307,30 @@ function getSurveyDetail(idOrCode) {
     const qSheet = surveySS.getSheetByName("CauHoi_Schema");
     const qData = qSheet.getDataRange().getValues();
     
-    const questions = [];
+    const blocks = [];
     for (let i = 1; i < qData.length; i++) {
       const r = qData[i];
-      questions.push({
-        id: r[0], code: r[1], content: r[2], type: r[3],
-        required: r[4] == 1, weight: r[5], group: r[6],
-        isReverse: r[7] == 1, options: JSON.parse(r[8] || '[]')
+      blocks.push({
+        id: r[0], code: r[1], title: r[2], type: r[3],
+        required: r[4] == 1, weight: r[5], scoreGroupCode: r[6],
+        reverseScore: r[7] == 1, options: JSON.parse(r[8] || '[]')
       });
     }
+    
+    const fullMeta = JSON.parse(sData[7] || '{}');
     
     return {
       success: true,
       data: {
-        id: sData[0], code: sData[1], title: sData[2], fileId: sData[3],
-        status: sData[4], category: sData[5], settings: JSON.parse(sData[7] || '{}'),
-        questions
+        id: sData[0], code: sData[1], name: sData[2], fileId: sData[3],
+        status: sData[4], category: sData[5], 
+        description: fullMeta.description || "",
+        type: fullMeta.type || "assessment",
+        collectionStatus: fullMeta.collectionStatus || 'closed',
+        settings: fullMeta.settings || {},
+        branding: fullMeta.branding || {},
+        scoreGroups: fullMeta.scoreGroups || [],
+        blocks
       }
     };
   } catch (e) {
@@ -381,59 +404,73 @@ function handleSubmitResponse(payload) {
   if (!surveyResult.success) throw new Error("Bảng hỏi không tồn tại.");
   
   const survey = surveyResult.data;
+  
+  // Security Check: Collection status
+  if (survey.collectionStatus === 'closed') {
+    throw new Error("Bảng hỏi này đã đóng thu thập.");
+  }
+
   let totalScore = 0;
   const groupScores = {};
   const responseId = "RES_" + Utilities.getUuid().substring(0, 8);
   const timestamp = new Date();
   
   const surveySS = SpreadsheetApp.openById(survey.fileId);
-  const wideSheet = surveySS.getSheetByName("KetQua_SPSS");
-  const headers = wideSheet.getRange(1, 1, 1, wideSheet.getLastColumn()).getValues()[0];
+  const wideSheet = getOrCreateSheet(surveySS, "KetQua_TongHop");
+  const headers = wideSheet.getRange(1, 1, 1, Math.max(1, wideSheet.getLastColumn())).getValues()[0];
   
   const wideRow = new Array(headers.length).fill("");
   wideRow[0] = responseId;
   wideRow[1] = timestamp;
-  wideRow[2] = userInfo.name;
-  wideRow[3] = userInfo.email;
-  wideRow[4] = userInfo.phone;
+  wideRow[2] = userInfo.name || "";
+  wideRow[3] = userInfo.email || "";
+  wideRow[4] = userInfo.phone || "";
 
-  survey.questions.forEach(q => {
+  survey.blocks.forEach(q => {
     const val = responses[q.id];
     let pts = 0;
     
-    // Scoring logic
-    if (q.type === 'single_choice' || q.type === 'likert' || q.type === 'scale') {
-      const opt = q.options.find(o => o.value == val || o.label == val);
+    if (q.type === 'single_choice' || q.type === 'likert') {
+      const opt = q.options?.find(o => String(o.value) === String(val) || o.label === val);
       if (opt) {
-        pts = Number(opt.score || opt.points || 0);
-        if (q.isReverse) {
-          const allScores = q.options.map(o => Number(o.score || o.points || 0));
-          pts = (Math.max(...allScores) + Math.min(...allScores)) - pts;
+        pts = Number(opt.score || 0);
+        if (q.reverseScore) {
+          const scores = q.options.map(o => Number(o.score || 0));
+          pts = (Math.max(...scores) + Math.min(...scores)) - pts;
         }
         pts *= (q.weight || 1);
       }
     }
     
     totalScore += pts;
-    if (q.group) groupScores[q.group] = (groupScores[q.group] || 0) + pts;
+    if (q.scoreGroupCode) groupScores[q.scoreGroupCode] = (groupScores[q.scoreGroupCode] || 0) + pts;
     
-    // Fill Wide Row for SPSS
     const colIdx = headers.indexOf(q.code || q.id);
-    if (colIdx !== -1) wideRow[colIdx] = val;
+    if (colIdx !== -1) wideRow[colIdx] = Array.isArray(val) ? val.join(", ") : val;
   });
 
   wideRow[5] = totalScore;
   wideSheet.appendRow(wideRow);
 
-  // Central Registry Log
+  // Interpretation (Alerts)
+  let interpretation = "Cảm ơn bạn đã tham gia.";
+  if (survey.settings?.alerts && Array.isArray(survey.settings.alerts)) {
+    const matched = survey.settings.alerts.find(a => {
+      const score = a.scoreGroupCode === 'total' ? totalScore : (groupScores[a.scoreGroupCode] || 0);
+      return score >= a.min && score <= a.max;
+    });
+    if (matched) interpretation = matched.message;
+  }
+
   ss.getSheetByName(APP_CONFIG.SHEETS.RESPONSES).appendRow([
     responseId, surveyId, userInfo.name, userInfo.email, userInfo.phone,
-    totalScore, "Hoàn thành", timestamp
+    totalScore, interpretation, timestamp
   ]);
   
-  if (survey.settings.sendEmail && userInfo.email) sendResultEmail(userInfo.email, survey.title, totalScore, groupScores);
-  
-  return { success: true, data: { responseId, totalScore, groupScores } };
+  return { 
+    success: true, 
+    data: { responseId, totalScore, groupScores, interpretation } 
+  };
 }
 
 function getResponses(payload) {
@@ -621,7 +658,7 @@ function getSurveys(payload) {
     const row = data[i];
     if (payload.status && row[4] !== payload.status) continue;
     records.push({
-      id: row[0], code: row[1], title: row[2], fileId: row[3],
+      id: row[0], code: row[1], name: row[2], fileId: row[3],
       status: row[4], category: row[5], updatedAt: row[9]
     });
   }
