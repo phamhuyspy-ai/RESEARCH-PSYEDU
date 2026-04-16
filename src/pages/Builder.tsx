@@ -75,14 +75,16 @@ const Builder: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    if (activeSurvey?.id === id && id) return;
+
     if (id) {
       const survey = surveys.find(s => s.id === id);
       if (survey) {
         setActiveSurvey(JSON.parse(JSON.stringify(survey)));
       }
-    } else {
+    } else if (!activeSurvey || activeSurvey.id !== 'new') {
       const newSurvey: Survey = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: 'new',
         code: `SURVEY_${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
         name: 'Bảng hỏi mới',
         description: 'Mô tả bảng hỏi của bạn',
@@ -127,11 +129,15 @@ const Builder: React.FC = () => {
       const response = await gasService.saveSurvey(updatedSurvey);
       
       if (response.success) {
+        // Use ID from server if provided (especially for new surveys)
+        const savedId = response.data?.id || response.id || updatedSurvey.id;
+        const savedSurvey = { ...updatedSurvey, id: savedId };
+        
         if (id) {
-          updateSurvey(updatedSurvey);
+          updateSurvey(savedSurvey);
         } else {
-          addSurvey(updatedSurvey);
-          navigate(`/admin/builder/${updatedSurvey.id}`, { replace: true });
+          addSurvey(savedSurvey);
+          navigate(`/admin/builder/${savedId}`, { replace: true });
         }
         
         setSaveMessage({ text: publish ? 'Đã xuất bản thành công!' : 'Đã lưu nháp thành công!', type: 'success' });

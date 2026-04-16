@@ -54,10 +54,10 @@ export default function App() {
       }
     };
     
-    if (authHydrated && appHydrated && settingsHydrated) {
+    if (authHydrated && appHydrated && settingsHydrated && isSyncing) {
       syncDb();
     }
-  }, [authHydrated, appHydrated, settingsHydrated, gasUrl, setSurveys, updateSettings]);
+  }, [authHydrated, appHydrated, settingsHydrated, gasUrl, isSyncing]);
 
   const isReady = authHydrated && appHydrated && settingsHydrated && !isSyncing;
 

@@ -224,6 +224,8 @@ const SurveyRunner: React.FC = () => {
     );
   }
 
+  const isEmbed = new URLSearchParams(window.location.search).get('embed') === 'true';
+
   if (!survey) return null;
 
   const currentBlock = survey.blocks[currentBlockIndex];
@@ -234,27 +236,29 @@ const SurveyRunner: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans" style={{ backgroundColor: branding.backgroundColor }}>
-      {/* Header */}
-      <header className="bg-white border-b border-border-main p-4 sticky top-0 z-50">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            {branding.logoUrl || globalSettings.logoUrl ? (
-              <img 
-                src={branding.logoUrl || globalSettings.logoUrl} 
-                alt="Logo" 
-                className="h-8 w-auto object-contain" 
-                referrerPolicy="no-referrer" 
-              />
-            ) : (
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: branding.primaryColor }}>P</div>
-            )}
-            <span className="font-bold text-text-main tracking-tight">{globalSettings.orgName}</span>
+      {/* Header - hide if embedded */}
+      {!isEmbed && (
+        <header className="bg-white border-b border-border-main p-4 sticky top-0 z-50">
+          <div className="max-w-3xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {branding.logoUrl || globalSettings.logoUrl ? (
+                <img 
+                  src={branding.logoUrl || globalSettings.logoUrl} 
+                  alt="Logo" 
+                  className="h-8 w-auto object-contain" 
+                  referrerPolicy="no-referrer" 
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg flex items-center justify-center text-white font-bold" style={{ backgroundColor: branding.primaryColor }}>P</div>
+              )}
+              <span className="font-bold text-text-main tracking-tight">{globalSettings.orgName}</span>
+            </div>
+            <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-bg-main px-2 py-1 rounded">
+              {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${survey.blocks.length}`}
+            </div>
           </div>
-          <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-bg-main px-2 py-1 rounded">
-            {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${survey.blocks.length}`}
-          </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Progress Bar */}
       <div className="w-full bg-bg-main h-1.5">

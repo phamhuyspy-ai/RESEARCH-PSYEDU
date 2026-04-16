@@ -230,10 +230,10 @@ function saveSurvey(payload) {
   const ss = getORCreateMasterSS();
   const sSheet = ss.getSheetByName(APP_CONFIG.SHEETS.SURVEYS);
   
-  const id = payload.id || "SRV_" + Utilities.getUuid().substring(0, 8);
-  const code = payload.code || "C" + id.substring(4);
+  const id = (!payload.id || payload.id === 'new') ? "SRV_" + Utilities.getUuid().substring(0, 8) : payload.id;
+  const code = payload.code || "C_" + Utilities.getUuid().substring(0, 5).toUpperCase();
   const title = payload.name || payload.title || "Untitled Survey";
-  const now = new Date();
+  const now = new Date().toISOString();
   
   // 1. Manage Individual File
   const surveyFileId = getOrCreateSurveyFile(id, code, title);
@@ -280,7 +280,8 @@ function saveSurvey(payload) {
       scoreGroups: payload.scoreGroups || [],
       description: payload.description || "",
       type: payload.type || "assessment",
-      collectionStatus: payload.collectionStatus || 'closed'
+      collectionStatus: payload.collectionStatus || 'closed',
+      blocks: blocks // CRITICAL: Save blocks to registry for UI sync
     }),
     surveyData ? surveyData.rowValues[8] : now, now
   ];
@@ -342,20 +343,16 @@ function getOrCreateSurveyFile(id, code, title) {
   const props = PropertiesService.getScriptProperties();
   const parentFolderId = props.getProperty('ROOT_FOLDER_ID');
   const parentFolder = DriveApp.getFolderById(parentFolderId);
-  
-  // Subfolder for Surveys
   const subFolders = parentFolder.getFoldersByName(APP_CONFIG.SURVEYS_FOLDER_NAME);
   const surveyFolder = subFolders.hasNext() ? subFolders.next() : parentFolder.createFolder(APP_CONFIG.SURVEYS_FOLDER_NAME);
   
-  const fileName = `SURVEY_${code}_[${id}]`;
-  const files = surveyFolder.getFilesByName(fileName);
-  
+  const fileNamePattern = `[${id}]`;
+  const files = surveyFolder.searchFiles(`title contains '${fileNamePattern}' and trashed = false`);
   if (files.hasNext()) return files.next().getId();
   
+  const fileName = `SURVEY_${title.replace(/[^a-zA-Z0-9]/g, '_')}_[${id}]`;
   const newSS = SpreadsheetApp.create(fileName);
-  const file = DriveApp.getFileById(newSS.getId());
-  file.moveTo(surveyFolder);
-  
+  DriveApp.getFileById(newSS.getId()).moveTo(surveyFolder);
   return newSS.getId();
 }
 
@@ -656,10 +653,26 @@ function getSurveys(payload) {
   
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (payload.status && row[4] !== payload.status) continue;
+    if (payload?.status && row[4] !== payload.status) continue;
+    
+    const fullMeta = JSON.parse(row[7] || '{}');
     records.push({
-      id: row[0], code: row[1], name: row[2], fileId: row[3],
-      status: row[4], category: row[5], updatedAt: row[9]
+      id: row[0], 
+      code: row[1], 
+      name: row[2], 
+      fileId: row[3],
+      status: row[4], 
+      category: row[5], 
+      thumbnail: row[6],
+      description: fullMeta.description || "",
+      type: fullMeta.type || "assessment",
+      collectionStatus: fullMeta.collectionStatus || 'closed',
+      settings: fullMeta.settings || {},
+      branding: fullMeta.branding || {},
+      scoreGroups: fullMeta.scoreGroups || [],
+      blocks: fullMeta.blocks || [], // Return blocks for UI
+      createdAt: row[8],
+      updatedAt: row[9]
     });
   }
   return { success: true, data: records };
