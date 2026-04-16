@@ -48,6 +48,9 @@ function doPost(e) {
       case 'get_config':
         result = getSystemConfig();
         break;
+      case 'get_settings':
+        result = getSettings();
+        break;
         
       // --- AUTH ---
       case 'admin_login':
@@ -545,6 +548,26 @@ function initializeSystem() {
 
 function getSystemConfig() {
   return { success: true, version: APP_CONFIG.VERSION, sheets: APP_CONFIG.SHEETS };
+}
+
+function getSettings() {
+  const ss = getORCreateMasterSS();
+  const sheet = ss.getSheetByName(APP_CONFIG.SHEETS.SETTINGS);
+  const data = sheet.getDataRange().getValues();
+  const settings = {};
+  
+  for (let i = 1; i < data.length; i++) {
+    const [key, value] = data[i];
+    if (key) {
+      try {
+        // Try to parse if it's JSON (for theme, socialLinks, etc.)
+        settings[key] = JSON.parse(value);
+      } catch (e) {
+        settings[key] = value;
+      }
+    }
+  }
+  return { success: true, data: settings };
 }
 
 function recoverPassword(email) {

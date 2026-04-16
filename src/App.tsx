@@ -35,9 +35,17 @@ export default function App() {
       }
       
       try {
-        const response = await gasService.getSurveys();
-        if (response.success && response.data) {
-          setSurveys(response.data);
+        const [surveysRes, settingsRes] = await Promise.all([
+          gasService.getSurveys(),
+          gasService.getSettings()
+        ]);
+
+        if (surveysRes.success && surveysRes.data) {
+          setSurveys(surveysRes.data);
+        }
+
+        if (settingsRes.success && settingsRes.data) {
+          updateSettings(settingsRes.data);
         }
       } catch (error) {
         console.error('Failed to sync DB', error);

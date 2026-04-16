@@ -65,6 +65,10 @@ export const gasService = {
     return this.request('get_surveys', payload);
   },
 
+  async getSettings() {
+    return this.request('get_settings');
+  },
+
   async getSurveyDetail(id: string) {
     return this.request('get_survey_detail', { id });
   },
