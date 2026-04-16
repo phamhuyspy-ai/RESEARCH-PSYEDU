@@ -22,7 +22,7 @@ export const Chatbot: React.FC = () => {
     return null;
   }
 
-  const ai = new GoogleGenAI({ apiKey: aiConfig.apiKey });
+  const ai = aiConfig.provider === 'gemini' ? new GoogleGenAI({ apiKey: aiConfig.apiKey }) : null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -46,39 +46,63 @@ export const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Prepare history for Gemini
-      const history = messages.map((msg) => ({
-        role: msg.role,
-        parts: [{ text: msg.text }],
-      }));
+      let responseText = '';
 
-      // Create chat session
-      const chat = ai.chats.create({
-        model: aiConfig.model || 'gemini-1.5-flash',
-        config: {
-          systemInstruction: aiConfig.systemPrompt || 'Bạn là trợ lý ảo hữu ích.',
-        },
-      });
+      if (aiConfig.provider === 'openai') {
+        const history = messages.map((msg) => ({
+          role: msg.role === 'model' ? 'assistant' : 'user',
+          content: msg.text,
+        }));
 
-      // Send history if any (this is a simplified approach, ideally we'd use the chat session properly)
-      // For simplicity in this preview, we'll just send the latest message with system instruction
-      // In a real app, you'd maintain the chat session object.
-      
-      const response = await ai.models.generateContent({
-        model: aiConfig.model || 'gemini-1.5-flash',
-        contents: [
-          ...history,
-          { role: 'user', parts: [{ text: userMessage.text }] }
-        ],
-        config: {
-          systemInstruction: aiConfig.systemPrompt || 'Bạn là trợ lý ảo hữu ích.',
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${aiConfig.apiKey}`,
+          },
+          body: JSON.stringify({
+            model: aiConfig.model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: aiConfig.systemPrompt || 'Bạn là trợ lý ảo hữu ích.' },
+              ...history,
+              { role: 'user', content: userMessage.text }
+            ],
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`OpenAI API error: ${response.status}`);
         }
-      });
+
+        const data = await response.json();
+        responseText = data.choices[0]?.message?.content || 'Xin lỗi, tôi không thể trả lời lúc này.';
+      } else {
+        // Gemini
+        if (!ai) throw new Error('Gemini AI not initialized');
+        
+        const history = messages.map((msg) => ({
+          role: msg.role,
+          parts: [{ text: msg.text }],
+        }));
+
+        const response = await ai.models.generateContent({
+          model: aiConfig.model || 'gemini-1.5-flash',
+          contents: [
+            ...history,
+            { role: 'user', parts: [{ text: userMessage.text }] }
+          ],
+          config: {
+            systemInstruction: aiConfig.systemPrompt || 'Bạn là trợ lý ảo hữu ích.',
+          }
+        });
+        
+        responseText = response.text || 'Xin lỗi, tôi không thể trả lời lúc này.';
+      }
 
       const modelMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: response.text || 'Xin lỗi, tôi không thể trả lời lúc này.',
+        text: responseText,
       };
 
       setMessages((prev) => [...prev, modelMessage]);

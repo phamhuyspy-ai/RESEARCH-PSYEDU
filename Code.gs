@@ -176,7 +176,13 @@ function updatePassword(oldPassword, newPassword) {
 function syncSchema(survey, userEmail) {
   try {
     const workspaceId = getUserWorkspace(userEmail);
+    if (!workspaceId) {
+      return { success: false, message: 'Workspace ID not found' };
+    }
     const ss = SpreadsheetApp.openById(workspaceId);
+    if (!ss) {
+      return { success: false, message: 'Could not open spreadsheet with ID: ' + workspaceId };
+    }
     let sheet = ss.getSheetByName(survey.code);
     
     if (!sheet) {
@@ -227,8 +233,14 @@ function submitData(surveyCode, submission) {
     if (!workspaceId) {
       workspaceId = getAdminWorkspace();
     }
+    if (!workspaceId) {
+      return { success: false, message: 'Workspace ID not found' };
+    }
     
     const ss = SpreadsheetApp.openById(workspaceId);
+    if (!ss) {
+      return { success: false, message: 'Could not open spreadsheet with ID: ' + workspaceId };
+    }
     let sheet = ss.getSheetByName(surveyCode);
     
     if (!sheet) {
