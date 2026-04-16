@@ -19,10 +19,10 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       organizationName: 'PsyEdu Research',
-      logoUrl: '',
+      logoUrl: 'https://storage.googleapis.com/a1aa/image/0N614o59N0tqO1485L7x8D2i82vH8h07R2m2s2b1n9m2b1n9.jpg',
       primaryColor: '#3b82f6',
       language: 'vi',
-      gasUrl: '',
+      gasUrl: 'https://script.google.com/macros/s/AKfycbxVkCxvaRQAArL4Jjv1ZO-A45i9a5gvN2jEaG9oujbsUenCi_coNISm7s35fF5E7zD2/exec',
       aiProvider: 'gemini',
       isBotEnabled: false,
       hasHydrated: false,

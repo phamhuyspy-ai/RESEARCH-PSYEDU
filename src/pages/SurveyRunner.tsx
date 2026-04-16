@@ -128,6 +128,25 @@ const SurveyRunner: React.FC = () => {
     });
     if (matchingAlert) interpretation = matchingAlert.message;
 
+    // Map responses to use block.code instead of block.id for backend sheet columns
+    const mappedResponses: Record<string, any> = {};
+    survey.blocks.forEach(block => {
+      const answer = responses[block.id];
+      if (answer !== undefined) {
+        if (block.type === 'matrix' && typeof answer === 'object') {
+          // Flatten matrix answers: { "R1": "C1" } -> { "Q1_R1": "C1" }
+          Object.keys(answer).forEach(rowCode => {
+            mappedResponses[`${block.code}_${rowCode}`] = answer[rowCode];
+          });
+        } else if (block.type === 'multi_choice' && Array.isArray(answer)) {
+          // Join multi-choice arrays into a comma-separated string
+          mappedResponses[block.code] = answer.join(', ');
+        } else {
+          mappedResponses[block.code] = answer;
+        }
+      }
+    });
+
     const submission: Submission = {
       submission_id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
@@ -135,16 +154,17 @@ const SurveyRunner: React.FC = () => {
       user_email: contactInfo.email,
       user_phone: contactInfo.phone,
       user_org: contactInfo.org,
-      responses,
+      responses: mappedResponses,
       total_score: total,
       group_scores: groups,
       result_interpretation: interpretation,
     };
 
     try {
-      const response = await gasService.submitData(survey.id, submission);
+      const response = await gasService.submitData(survey.code, submission);
       if (response.success) {
-        navigate(`/results/${submission.submission_id}`, { state: { submission, survey } });
+        // Pass original responses for the results page UI
+        navigate(`/results/${submission.submission_id}`, { state: { submission: { ...submission, responses }, survey } });
       } else {
         setError(response.message || 'Lỗi khi gửi dữ liệu.');
       }

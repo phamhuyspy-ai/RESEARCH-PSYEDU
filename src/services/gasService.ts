@@ -34,9 +34,17 @@ export const gasService = {
       return result;
     } catch (error) {
       console.error('GAS Request Error:', error);
+      
+      let errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      
+      // "Failed to fetch" usually indicates a CORS error or network issue with GAS
+      if (errorMessage === 'Failed to fetch') {
+        errorMessage = 'Lỗi kết nối (CORS). Vui lòng đảm bảo Google Apps Script đã được Deploy dưới dạng Web App với quyền truy cập "Anyone" (Bất kỳ ai).';
+      }
+
       return { 
         success: false, 
-        message: error instanceof Error ? error.message : 'Unknown error occurred' 
+        message: errorMessage 
       };
     }
   },
@@ -49,8 +57,8 @@ export const gasService = {
     return this.request('sync_schema', { survey });
   },
 
-  async submitData(surveyId: string, submission: any) {
-    return this.request('submit_data', { surveyId, submission });
+  async submitData(surveyCode: string, submission: any) {
+    return this.request('submit_data', { surveyCode, submission });
   },
 
   async sendEmailResult(email: string, result: any) {
