@@ -1,5 +1,6 @@
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { ProtectedRoute, PublicOnlyRoute } from './components/AuthGuards';
 import { useAuthStore } from './stores/authStore';
 import { useAppStore } from './stores/appStore';
@@ -107,6 +108,7 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <SpeedInsights />
     </BrowserRouter>
   );
 }
