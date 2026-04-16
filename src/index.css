@@ -1,0 +1,52 @@
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  --color-primary: #2563eb;
+  --color-bg-main: #f8fafc;
+  --color-sidebar: #0f172a;
+  --color-text-main: #1e293b;
+  --color-text-muted: #64748b;
+  --color-border-main: #e2e8f0;
+  --color-success-main: #10b981;
+}
+
+@layer base {
+  body {
+    @apply font-sans antialiased bg-bg-main text-text-main;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-text-main;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm bg-primary text-white hover:bg-blue-700 shadow-sm;
+  }
+  
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm bg-white border border-border-main text-text-main hover:bg-gray-50;
+  }
+  
+  .card-panel {
+    @apply bg-white p-6 rounded-xl border border-border-main shadow-sm;
+  }
+  
+  .nav-item-minimal {
+    @apply flex items-center gap-3 px-6 py-3 text-sm font-medium transition-all opacity-70 hover:opacity-100;
+  }
+  
+  .nav-item-minimal-active {
+    @apply opacity-100 bg-white/5 border-l-4 border-primary;
+  }
+
+  .stat-badge-minimal {
+    @apply inline-block mt-2 text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-green-100 text-green-800;
+  }
+}
+
