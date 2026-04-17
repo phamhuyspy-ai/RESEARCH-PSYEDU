@@ -15,7 +15,8 @@ import {
   Hash,
   ArrowUpDown,
   FileSpreadsheet,
-  FileDown
+  FileDown,
+  ExternalLink
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
@@ -25,6 +26,7 @@ const SurveysResponses: React.FC = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
   const [selectedSurveyId, setSelectedSurveyId] = useState<string>('');
   const [responses, setResponses] = useState<any[]>([]);
+  const [rawResponses, setRawResponses] = useState<any[][]>([]);
   const [questions, setQuestions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -88,6 +90,7 @@ const SurveysResponses: React.FC = () => {
           // New architecture: data.responses is already in suitable format (Wide)
           // We might need to map it if it's raw sheet data (array of arrays)
           if (Array.isArray(data.responses) && data.responses.length > 1) {
+            setRawResponses(data.responses); // Save raw data for Excel export
             const [headers, ...rows] = data.responses;
             const mapped = rows.map((row: any[]) => {
               const obj: any = { answers: {} };
@@ -134,41 +137,49 @@ const SurveysResponses: React.FC = () => {
     try {
       const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
       
-      // Prepare headers
-      // Columns: Metadata, then Questions (using code or content)
-      const headers = [
-        'ResponseID',
-        'Timestamp',
-        'Name',
-        'Email',
-        'Phone',
-        'Org',
-        'TotalScore',
-        'Interpretation',
-        'GroupScores',
-        ...questions.map(q => q.Code || q.NoiDung)
-      ];
-
-      // Prepare data rows
-      const rows = responses.map(resp => {
-        const row = [
-          resp.ID,
-          new Date(resp.NgayTao).toLocaleString('vi-VN'),
-          resp.HoTen,
-          resp.Email,
-          resp.SoDienThoai,
-          resp.ToChuc || '',
-          resp.TongDiem,
-          resp.PhanLoai,
-          typeof resp.DiemThanhPhan === 'object' ? JSON.stringify(resp.DiemThanhPhan) : (resp.DiemThanhPhan || ''),
-          ...questions.map(q => resp.answers[q.ID] || '')
+      let exportData: any[] = [];
+      
+      if (rawResponses && rawResponses.length > 0) {
+        // Use the exact raw data from Google Sheet
+        exportData = rawResponses;
+      } else {
+        // Fallback: Prepare headers and map fields manually
+        // Columns: Metadata, then Questions (using code or content)
+        const headers = [
+          'ResponseID',
+          'Timestamp',
+          'Name',
+          'Email',
+          'Phone',
+          'Org',
+          'TotalScore',
+          'Interpretation',
+          'GroupScores',
+          ...questions.map(q => q.Code || q.NoiDung)
         ];
-        return row;
-      });
 
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+        // Prepare data rows
+        const rows = responses.map(resp => {
+          const row = [
+            resp.ID,
+            new Date(resp.NgayTao).toLocaleString('vi-VN'),
+            resp.HoTen,
+            resp.Email,
+            resp.SoDienThoai,
+            resp.ToChuc || '',
+            resp.TongDiem,
+            resp.PhanLoai,
+            typeof resp.DiemThanhPhan === 'object' ? JSON.stringify(resp.DiemThanhPhan) : (resp.DiemThanhPhan || ''),
+            ...questions.map(q => resp.answers[q.ID] || '')
+          ];
+          return row;
+        });
+        exportData = [headers, ...rows];
+      }
+
+      const worksheet = XLSX.utils.aoa_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Kết quả khảo sát');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'KetQua_TongHop');
       
       XLSX.writeFile(workbook, `Ket_qua_${selectedSurvey?.name || 'Khao_sat'}_${new Date().getTime()}.xlsx`);
     } catch (err) {
