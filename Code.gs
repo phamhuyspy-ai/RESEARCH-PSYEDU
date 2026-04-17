@@ -247,7 +247,8 @@ function saveSurvey(payload) {
   qSheet.getRange(1, 1, 1, qHeaders.length).setFontWeight("bold").setBackground("#dcfce7");
   
   const blocks = payload.blocks || payload.questions || [];
-  blocks.forEach((q, idx) => {
+  for (let idx = 0; idx < blocks.length; idx++) {
+    const q = blocks[idx];
     qSheet.appendRow([
       q.id || "Q" + idx, 
       q.code || "VAR" + idx, 
@@ -259,29 +260,32 @@ function saveSurvey(payload) {
       (q.reverseScore || q.isReverse) ? 1 : 0,
       JSON.stringify(q.options || [])
     ]);
-  });
+  }
 
   // Build dynamic headers based on blocks
   const dynamicHeaders = [];
-  blocks.forEach(b => {
-    if (b.type === 'content' || b.type === 'contact') return;
+  for (let i = 0; i < blocks.length; i++) {
+    const b = blocks[i];
+    if (b.type === 'content' || b.type === 'contact') continue;
     if (b.type === 'matrix') {
        const rows = b.matrixRows || [];
        const cols = b.matrixCols || [];
-       rows.forEach(r => {
-          cols.forEach(c => {
+       for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+          const r = rows[rIdx];
+          for (let cIdx = 0; cIdx < cols.length; cIdx++) {
+             const c = cols[cIdx];
              const cType = c.type || 'single_choice';
              if (cType === 'single_choice') {
                  if (!dynamicHeaders.includes(`${b.code}_${r.code}`)) dynamicHeaders.push(`${b.code}_${r.code}`);
              } else {
                  if (!dynamicHeaders.includes(`${b.code}_${r.code}_${c.value}`)) dynamicHeaders.push(`${b.code}_${r.code}_${c.value}`);
              }
-          });
-       });
+          }
+       }
     } else {
        if (!dynamicHeaders.includes(b.code)) dynamicHeaders.push(b.code);
     }
-  });
+  }
 
   const respHeaders = [
      "ResponseID", "Timestamp", "Name", "Email", "Phone", "Org", 
@@ -299,12 +303,13 @@ function saveSurvey(payload) {
      respSheet.getRange(1, 1, 1, mergedHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
   } else {
      let added = false;
-     respHeaders.forEach(h => {
+     for (let i = 0; i < respHeaders.length; i++) {
+        const h = respHeaders[i];
         if (!mergedHeaders.includes(h)) {
            mergedHeaders.push(h);
            added = true;
         }
-     });
+     }
      if (added) {
         respSheet.getRange(1, 1, 1, mergedHeaders.length).setValues([mergedHeaders]);
         respSheet.getRange(1, 1, 1, mergedHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
@@ -467,7 +472,8 @@ function handleSubmitResponse(payload) {
     const headers = wideSheet.getRange(1, 1, 1, Math.max(1, wideSheet.getLastColumn())).getValues()[0];
     const wideRow = new Array(headers.length).fill("");
     
-    headers.forEach((header, idx) => {
+    for (let idx = 0; idx < headers.length; idx++) {
+      const header = headers[idx];
       switch (header) {
         case "ResponseID": wideRow[idx] = submission.submission_id || "RES_"+Utilities.getUuid().substring(0,8); break;
         case "Timestamp": wideRow[idx] = submission.timestamp ? new Date(submission.timestamp) : new Date(); break;
@@ -484,7 +490,7 @@ function handleSubmitResponse(payload) {
             wideRow[idx] = Array.isArray(val) ? val.join(", ") : val;
           }
       }
-    });
+    }
 
     wideSheet.appendRow(wideRow);
     
@@ -538,7 +544,9 @@ function saveSettings(payload) {
   const sheet = ss.getSheetByName(APP_CONFIG.SHEETS.SETTINGS);
   const data = sheet.getDataRange().getValues();
   
-  Object.entries(payload).forEach(([key, value]) => {
+  const entries = Object.entries(payload);
+  for (let idx = 0; idx < entries.length; idx++) {
+    const [key, value] = entries[idx];
     const stringValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
     let found = false;
     for (let i = 1; i < data.length; i++) {
@@ -552,7 +560,7 @@ function saveSettings(payload) {
     if (!found) {
       sheet.appendRow([key, stringValue, "", new Date()]);
     }
-  });
+  }
   return { success: true };
 }
 
