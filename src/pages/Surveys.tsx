@@ -17,7 +17,9 @@ import {
   Share2,
   Copy,
   Code,
-  Download
+  Download,
+  Play,
+  Square
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -25,7 +27,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { gasService } from '../services/gasService';
 
 const Surveys: React.FC = () => {
-  const { surveys, deleteSurvey } = useAppStore();
+  const { surveys, deleteSurvey, updateSurvey } = useAppStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [selectedSurveyForShare, setSelectedSurveyForShare] = useState<string | null>(null);
@@ -75,6 +77,23 @@ const Surveys: React.FC = () => {
         downloadLink.click();
       };
       img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+  };
+
+  const handleToggleCollection = async () => {
+    if (!selectedSurvey) return;
+    const newStatus: "open" | "closed" = selectedSurvey.collectionStatus === 'open' ? 'closed' : 'open';
+    const updated = { ...selectedSurvey, collectionStatus: newStatus };
+    
+    try {
+      const response = await gasService.saveSurvey(updated);
+      if (response.success) {
+        updateSurvey(updated);
+      } else {
+        alert(response.message || 'Không thể thay đổi trạng thái thu thập.');
+      }
+    } catch (err) {
+      alert('Đã có lỗi xảy ra khi kết nối máy chủ.');
     }
   };
 
@@ -236,6 +255,34 @@ const Surveys: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-6">
+              <div className="p-4 bg-bg-main rounded-xl border border-border-main">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-text-main">Trạng thái thu thập</span>
+                  <div className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${selectedSurvey.collectionStatus === 'open' ? 'bg-success-main text-white' : 'bg-gray-300 text-gray-700'}`}>
+                    {selectedSurvey.collectionStatus === 'open' ? 'Đang mở' : 'Đã đóng'}
+                  </div>
+                </div>
+                <p className="text-[10px] text-text-muted mb-3">
+                  {selectedSurvey.collectionStatus === 'open' 
+                    ? 'Người dùng có thể truy cập link để thực hiện khảo sát.' 
+                    : 'Người dùng sẽ không thể truy cập khảo sát hiện tại.'}
+                </p>
+                <button
+                  onClick={handleToggleCollection}
+                  className={`w-full py-1.5 px-3 rounded text-xs font-bold flex items-center justify-center gap-2 transition-colors ${
+                    selectedSurvey.collectionStatus === 'open' 
+                      ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' 
+                      : 'bg-success-main text-white hover:bg-green-600'
+                  }`}
+                >
+                  {selectedSurvey.collectionStatus === 'open' ? (
+                    <><Square size={14} /> Dừng thu thập</>
+                  ) : (
+                    <><Play size={14} /> Mở thu thập</>
+                  )}
+                </button>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-text-muted uppercase tracking-wider mb-1.5">Link trực tiếp</label>
                 <div className="flex gap-2">

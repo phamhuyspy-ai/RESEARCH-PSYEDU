@@ -20,7 +20,15 @@ const PublicPortal: React.FC = () => {
   const { surveys } = useAppStore();
   const { orgName } = useSettingsStore();
 
-  const activeSurveys = surveys.filter(s => s.status === 'published' && s.collectionStatus === 'open');
+  const displaySurveys = surveys;
+
+  const getPublicFormStatus = (survey: any) => {
+    if (survey.status !== 'published') return { label: 'Đang phát triển', style: 'bg-gray-100 text-gray-600 border-gray-200', active: false };
+    if (survey.collectionStatus === 'closed') return { label: 'Chưa mở thu thập', style: 'bg-amber-50 text-amber-600 border-amber-200', active: false };
+    return { label: 'Đang thu thập', style: 'bg-green-50 text-green-600 border-green-200', active: true };
+  };
+
+  const activeCount = displaySurveys.filter(s => getPublicFormStatus(s).active).length;
 
   return (
     <div className="min-h-screen bg-bg-main font-sans text-text-main">
@@ -79,11 +87,11 @@ const PublicPortal: React.FC = () => {
           </div>
           <div className="flex items-center gap-2 text-sm font-medium text-text-muted">
             <div className="w-2 h-2 rounded-full bg-success-main"></div>
-            {activeSurveys.length} bảng hỏi đang mở
+            {activeCount} bảng hỏi đang mở
           </div>
         </div>
 
-        {activeSurveys.length === 0 ? (
+        {displaySurveys.length === 0 ? (
           <div className="bg-white border border-border-main rounded-2xl p-16 text-center shadow-sm">
             <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center mx-auto mb-4">
               <ClipboardList className="text-text-muted" size={32} />
@@ -93,33 +101,44 @@ const PublicPortal: React.FC = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {activeSurveys.map((survey) => (
-              <div key={survey.id} className="group bg-white border border-border-main rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-                <div className="p-8 flex-1">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                      {survey.type === 'evaluation' ? 'Lượng giá' : 'Khảo sát'}
-                    </span>
-                    <span className="text-[10px] font-medium text-text-muted">#{survey.code}</span>
+            {displaySurveys.map((survey) => {
+              const status = getPublicFormStatus(survey);
+              return (
+                <div key={survey.id} className="group bg-white border border-border-main rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
+                  <div className="p-8 flex-1">
+                    <div className="flex items-center justify-between mb-4">
+                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                        {survey.type === 'evaluation' ? 'Lượng giá' : 'Khảo sát'}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border ${status.style}`}>
+                        {status.label}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
+                      {survey.name}
+                    </h3>
+                    <p className="text-sm text-text-muted line-clamp-3 leading-relaxed">
+                      {survey.description || 'Không có mô tả cho bảng hỏi này.'}
+                    </p>
                   </div>
-                  <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
-                    {survey.name}
-                  </h3>
-                  <p className="text-sm text-text-muted line-clamp-3 leading-relaxed">
-                    {survey.description || 'Không có mô tả cho bảng hỏi này.'}
-                  </p>
+                  <div className="px-8 py-6 bg-bg-main border-t border-border-main">
+                    {status.active ? (
+                      <Link
+                        to={`/survey/${survey.code}`}
+                        className="w-full btn-primary"
+                      >
+                        Bắt đầu ngay
+                        <ArrowRight size={16} className="ml-2" />
+                      </Link>
+                    ) : (
+                      <button className="w-full btn-secondary cursor-not-allowed text-gray-500 opacity-60" disabled>
+                        Chưa khả dụng
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="px-8 py-6 bg-bg-main border-t border-border-main">
-                  <Link
-                    to={`/survey/${survey.code}`}
-                    className="w-full btn-primary"
-                  >
-                    Bắt đầu ngay
-                    <ArrowRight size={16} className="ml-2" />
-                  </Link>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </section>

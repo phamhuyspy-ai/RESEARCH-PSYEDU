@@ -261,12 +261,54 @@ function saveSurvey(payload) {
     ]);
   });
 
+  // Build dynamic headers based on blocks
+  const dynamicHeaders = [];
+  blocks.forEach(b => {
+    if (b.type === 'content' || b.type === 'contact') return;
+    if (b.type === 'matrix') {
+       const rows = b.matrixRows || [];
+       const cols = b.matrixCols || [];
+       rows.forEach(r => {
+          cols.forEach(c => {
+             const cType = c.type || 'single_choice';
+             if (cType === 'single_choice') {
+                 if (!dynamicHeaders.includes(`${b.code}_${r.code}`)) dynamicHeaders.push(`${b.code}_${r.code}`);
+             } else {
+                 if (!dynamicHeaders.includes(`${b.code}_${r.code}_${c.value}`)) dynamicHeaders.push(`${b.code}_${r.code}_${c.value}`);
+             }
+          });
+       });
+    } else {
+       if (!dynamicHeaders.includes(b.code)) dynamicHeaders.push(b.code);
+    }
+  });
+
+  const respHeaders = [
+     "ResponseID", "Timestamp", "Name", "Email", "Phone", "Org", 
+     "TotalScore", "Interpretation", "GroupScores", ...dynamicHeaders
+  ];
+
   // Prepare Response Sheet (Wide Format)
   const respSheet = getOrCreateSheet(surveySS, "KetQua_TongHop");
-  if (respSheet.getLastRow() === 0) {
-    const respHeaders = ["ResponseID", "Timestamp", "Name", "Email", "Phone", "TotalScore", ...blocks.map(q => q.code || q.id)];
-    respSheet.appendRow(respHeaders);
-    respSheet.getRange(1, 1, 1, respHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
+  const existingHeaders = respSheet.getLastRow() > 0 ? respSheet.getRange(1, 1, 1, respSheet.getLastColumn()).getValues()[0] : [];
+  
+  let mergedHeaders = [...existingHeaders];
+  if (mergedHeaders.length === 0) {
+     mergedHeaders = respHeaders;
+     respSheet.appendRow(mergedHeaders);
+     respSheet.getRange(1, 1, 1, mergedHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
+  } else {
+     let added = false;
+     respHeaders.forEach(h => {
+        if (!mergedHeaders.includes(h)) {
+           mergedHeaders.push(h);
+           added = true;
+        }
+     });
+     if (added) {
+        respSheet.getRange(1, 1, 1, mergedHeaders.length).setValues([mergedHeaders]);
+        respSheet.getRange(1, 1, 1, mergedHeaders.length).setFontWeight("bold").setBackground("#fef9c3");
+     }
   }
 
   // 2. Update Master Registry
@@ -395,79 +437,78 @@ function publishSurvey(payload) {
 // ==========================================
 
 function handleSubmitResponse(payload) {
-  const { surveyId, userInfo, responses } = payload;
-  const ss = getORCreateMasterSS();
-  const surveyResult = getSurveyDetail(surveyId);
-  if (!surveyResult.success) throw new Error("Bảng hỏi không tồn tại.");
+  const { surveyId, surveyCode, submission } = payload;
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000); // Prevent concurrent overwrite
   
-  const survey = surveyResult.data;
-  
-  // Security Check: Collection status
-  if (survey.collectionStatus === 'closed') {
-    throw new Error("Bảng hỏi này đã đóng thu thập.");
-  }
-
-  let totalScore = 0;
-  const groupScores = {};
-  const responseId = "RES_" + Utilities.getUuid().substring(0, 8);
-  const timestamp = new Date();
-  
-  const surveySS = SpreadsheetApp.openById(survey.fileId);
-  const wideSheet = getOrCreateSheet(surveySS, "KetQua_TongHop");
-  const headers = wideSheet.getRange(1, 1, 1, Math.max(1, wideSheet.getLastColumn())).getValues()[0];
-  
-  const wideRow = new Array(headers.length).fill("");
-  wideRow[0] = responseId;
-  wideRow[1] = timestamp;
-  wideRow[2] = userInfo.name || "";
-  wideRow[3] = userInfo.email || "";
-  wideRow[4] = userInfo.phone || "";
-
-  survey.blocks.forEach(q => {
-    const val = responses[q.id];
-    let pts = 0;
+  try {
+    const ss = getORCreateMasterSS();
+    const sSheet = ss.getSheetByName(APP_CONFIG.SHEETS.SURVEYS);
+    let surveyRow = null;
     
-    if (q.type === 'single_choice' || q.type === 'likert') {
-      const opt = q.options?.find(o => String(o.value) === String(val) || o.label === val);
-      if (opt) {
-        pts = Number(opt.score || 0);
-        if (q.reverseScore) {
-          const scores = q.options.map(o => Number(o.score || 0));
-          pts = (Math.max(...scores) + Math.min(...scores)) - pts;
-        }
-        pts *= (q.weight || 1);
-      }
+    if (surveyId) surveyRow = findRowByValue(sSheet, 0, surveyId);
+    if (!surveyRow && surveyCode) surveyRow = findRowByValue(sSheet, 1, surveyCode);
+    
+    if (!surveyRow) throw new Error("Bảng hỏi không tồn tại.");
+    
+    const fullMeta = JSON.parse(surveyRow.rowValues[7] || '{}');
+    if (fullMeta.collectionStatus === 'closed') {
+      throw new Error("Bảng hỏi này đã đóng thu thập.");
     }
-    
-    totalScore += pts;
-    if (q.scoreGroupCode) groupScores[q.scoreGroupCode] = (groupScores[q.scoreGroupCode] || 0) + pts;
-    
-    const colIdx = headers.indexOf(q.code || q.id);
-    if (colIdx !== -1) wideRow[colIdx] = Array.isArray(val) ? val.join(", ") : val;
-  });
-
-  wideRow[5] = totalScore;
-  wideSheet.appendRow(wideRow);
-
-  // Interpretation (Alerts)
-  let interpretation = "Cảm ơn bạn đã tham gia.";
-  if (survey.settings?.alerts && Array.isArray(survey.settings.alerts)) {
-    const matched = survey.settings.alerts.find(a => {
-      const score = a.scoreGroupCode === 'total' ? totalScore : (groupScores[a.scoreGroupCode] || 0);
-      return score >= a.min && score <= a.max;
-    });
-    if (matched) interpretation = matched.message;
-  }
-
-  ss.getSheetByName(APP_CONFIG.SHEETS.RESPONSES).appendRow([
-    responseId, surveyId, userInfo.name, userInfo.email, userInfo.phone,
-    totalScore, interpretation, timestamp
-  ]);
   
-  return { 
-    success: true, 
-    data: { responseId, totalScore, groupScores, interpretation } 
-  };
+    const surveyFileId = surveyRow.rowValues[3];
+    const surveySS = SpreadsheetApp.openById(surveyFileId);
+    const wideSheet = getOrCreateSheet(surveySS, "KetQua_TongHop");
+    
+    if (wideSheet.getLastRow() === 0) {
+      throw new Error("Lỗi cấu trúc dữ liệu. Bảng hỏi chưa được xuất bản đúng mô hình.");
+    }
+  
+    const headers = wideSheet.getRange(1, 1, 1, Math.max(1, wideSheet.getLastColumn())).getValues()[0];
+    const wideRow = new Array(headers.length).fill("");
+    
+    headers.forEach((header, idx) => {
+      switch (header) {
+        case "ResponseID": wideRow[idx] = submission.submission_id || "RES_"+Utilities.getUuid().substring(0,8); break;
+        case "Timestamp": wideRow[idx] = submission.timestamp ? new Date(submission.timestamp) : new Date(); break;
+        case "Name": wideRow[idx] = submission.user_name || ""; break;
+        case "Email": wideRow[idx] = submission.user_email || ""; break;
+        case "Phone": wideRow[idx] = submission.user_phone || ""; break;
+        case "Org": wideRow[idx] = submission.user_org || ""; break;
+        case "TotalScore": wideRow[idx] = submission.total_score || 0; break;
+        case "Interpretation": wideRow[idx] = submission.result_interpretation || ""; break;
+        case "GroupScores": wideRow[idx] = JSON.stringify(submission.group_scores || {}); break;
+        default:
+          if (submission.responses && submission.responses.hasOwnProperty(header)) {
+            const val = submission.responses[header];
+            wideRow[idx] = Array.isArray(val) ? val.join(", ") : val;
+          }
+      }
+    });
+
+    wideSheet.appendRow(wideRow);
+    
+    // Log to Master RESPONSES Registry
+    const logSheet = ss.getSheetByName(APP_CONFIG.SHEETS.RESPONSES);
+    logSheet.appendRow([
+      submission.submission_id || "RES_"+Utilities.getUuid().substring(0,8), 
+      surveyId || surveyCode, 
+      surveyRow.rowValues[2], // Survey Name
+      submission.user_email || 'Anonymous', 
+      new Date(),
+      submission.total_score || 0,
+      submission.result_interpretation || "Complete",
+      new Date()
+    ]);
+
+    return { 
+      success: true, 
+      message: "Ghi nhận phản hồi thành công.", 
+      data: { submissionId: submission.submission_id } 
+    };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getResponses(payload) {

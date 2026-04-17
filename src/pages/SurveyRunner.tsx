@@ -161,13 +161,19 @@ const SurveyRunner: React.FC = () => {
             const rowData = answer[rowCode];
             if (typeof rowData === 'object' && rowData !== null) {
               Object.keys(rowData).forEach(colValue => {
-                if (rowData[colValue] === true) {
-                   mappedResponses[`${block.code}_${rowCode}`] = colValue; // For single/multi choice, just store the colValue if true. Wait, if multiple are true, it overwrites?
-                   // Actually, if it's multi choice, we should probably join them or store separately.
-                   // Let's store as `${block.code}_${rowCode}_${colValue}` = true/text
-                   mappedResponses[`${block.code}_${rowCode}_${colValue}`] = rowData[colValue];
-                } else if (rowData[colValue]) {
-                   mappedResponses[`${block.code}_${rowCode}_${colValue}`] = rowData[colValue];
+                const isSingleChoiceLike = rowData[colValue] === true && !block.matrixCols?.find(c => c.value === colValue)?.type; // If type is undefined, it's single choice
+                const colType = block.matrixCols?.find(c => c.value === colValue)?.type || 'single_choice';
+                
+                if (colType === 'single_choice') {
+                   // Only the selected column will be true
+                   if (rowData[colValue] === true) {
+                      mappedResponses[`${block.code}_${rowCode}`] = colValue;
+                   }
+                } else {
+                   // Multi choice, text, number
+                   if (rowData[colValue]) {
+                      mappedResponses[`${block.code}_${rowCode}_${colValue}`] = rowData[colValue];
+                   }
                 }
               });
             } else {
@@ -197,7 +203,7 @@ const SurveyRunner: React.FC = () => {
     };
 
     try {
-      const response = await gasService.submitResponse({ surveyCode: survey.code, submission });
+      const response = await gasService.submitResponse({ surveyId: survey.id, surveyCode: survey.code, submission });
       if (response.success) {
         // Pass original responses for the results page UI
         navigate(`/results/${submission.submission_id}`, { state: { submission: { ...submission, responses }, survey } });
