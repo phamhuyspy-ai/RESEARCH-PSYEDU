@@ -2,6 +2,8 @@
 import React from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Submission, Survey } from '../types';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 import { 
   CheckCircle2, 
   Download, 
@@ -12,8 +14,10 @@ import {
   ArrowRight,
   Gift,
   ExternalLink,
-  Info
+  Info,
+  Loader2
 } from 'lucide-react';
+import React, { useState, useRef } from 'react';
 
 interface SurveyResultsProps {
   adminView?: boolean;
@@ -24,8 +28,57 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
   const navigate = useNavigate();
   const { submissionId } = useParams();
   
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
+  const pdfRef = useRef<HTMLDivElement>(null);
+
   const submission = location.state?.submission as Submission;
   const survey = location.state?.survey as Survey;
+
+  const handleDownloadPDF = async () => {
+    if (!pdfRef.current) return;
+    setIsExportingPDF(true);
+    try {
+      const element = pdfRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      
+      // If content is very long, it will be cropped on one page. 
+      // But usually results are short enough, or we can handle multi-page if needed.
+      // For now, scale it to fit or just let it overflow onto next page manually (basic version).
+      if (pdfHeight > pdf.internal.pageSize.getHeight()) {
+          // Adjust width to fit entire height into one page if needed, or add pages.
+          let heightLeft = pdfHeight;
+          let position = 0;
+          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pdf.internal.pageSize.getHeight();
+          
+          while (heightLeft >= 0) {
+              position = heightLeft - pdfHeight;
+              pdf.addPage();
+              pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
+              heightLeft -= pdf.internal.pageSize.getHeight();
+          }
+      } else {
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+      
+      pdf.save(`Ket_qua_${survey.name}_${new Date().getTime()}.pdf`);
+    } catch (error) {
+      console.error('Lỗi khi tải PDF:', error);
+      alert('Có lỗi xảy ra khi tải PDF.');
+    } finally {
+      setIsExportingPDF(false);
+    }
+  };
 
   if (!submission || !survey) {
     return (
@@ -43,7 +96,7 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
 
   return (
     <div className="min-h-screen py-12 px-4 font-sans" style={{ backgroundColor: branding.backgroundColor }}>
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-3xl mx-auto space-y-8" ref={pdfRef}>
         {/* Main Success Card */}
         <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
           <div className="inline-flex items-center justify-center h-24 w-24 rounded-full animate-bounce" style={{ backgroundColor: branding.primaryColor + '15', color: branding.primaryColor }}>
@@ -102,12 +155,13 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
             </div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-4 pt-6">
+          <div className="flex flex-wrap justify-center gap-4 pt-6" data-html2canvas-ignore="true">
             <button
-              onClick={() => window.print()}
+              onClick={handleDownloadPDF}
+              disabled={isExportingPDF}
               className="flex items-center gap-2 px-8 py-4 bg-text-main text-white rounded-2xl font-bold hover:bg-black transition-all shadow-xl"
             >
-              <Download size={18} />
+              {isExportingPDF ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
               Tải báo cáo (PDF)
             </button>
             <button

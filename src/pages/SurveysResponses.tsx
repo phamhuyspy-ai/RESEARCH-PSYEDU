@@ -29,6 +29,7 @@ const SurveysResponses: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [surveySearchTerm, setSurveySearchTerm] = useState('');
   const [error, setError] = useState('');
   
   const navigate = useNavigate();
@@ -206,9 +207,9 @@ const SurveysResponses: React.FC = () => {
       });
 
       doc.save(`Bao_cao_${selectedSurvey?.name || 'Khao_sat'}_${new Date().getTime()}.pdf`);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('Lỗi khi xuất file PDF');
+      alert('Lỗi khi xuất file PDF: ' + (err?.message || err));
     } finally {
       setIsExporting(false);
     }
@@ -256,13 +257,23 @@ const SurveysResponses: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Sidebar: Survey Selection */}
         <div className="lg:col-span-1 space-y-4">
-          <div className="bg-white p-6 rounded-[24px] border border-border-main shadow-sm h-full">
-            <h3 className="text-sm font-black text-text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+          <div className="bg-white p-6 rounded-[24px] border border-border-main shadow-sm h-full flex flex-col">
+            <h3 className="text-sm font-black text-text-muted uppercase tracking-widest mb-4 flex items-center gap-2 shrink-0">
               <Filter size={14} />
               Chọn bảng hỏi
             </h3>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-              {Array.isArray(surveys) && surveys.map(survey => (
+            <div className="relative mb-4 shrink-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" size={14} />
+              <input
+                type="text"
+                placeholder="Tìm bảng hỏi..."
+                value={surveySearchTerm}
+                onChange={(e) => setSurveySearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-bg-main border border-border-main rounded-xl text-xs focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+              />
+            </div>
+            <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
+              {Array.isArray(surveys) && surveys.filter(s => s.name?.toLowerCase().includes(surveySearchTerm.toLowerCase()) || s.code?.toLowerCase().includes(surveySearchTerm.toLowerCase())).map(survey => (
                 <button
                   key={survey.id}
                   onClick={() => setSelectedSurveyId(survey.id)}
