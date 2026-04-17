@@ -137,13 +137,15 @@ const SurveysResponses: React.FC = () => {
       // Prepare headers
       // Columns: Metadata, then Questions (using code or content)
       const headers = [
-        'ID Phản hồi',
-        'Ngày nộp',
-        'Họ tên',
+        'ResponseID',
+        'Timestamp',
+        'Name',
         'Email',
-        'Số điện thoại',
-        'Tổng điểm',
-        'Phân loại',
+        'Phone',
+        'Org',
+        'TotalScore',
+        'Interpretation',
+        'GroupScores',
         ...questions.map(q => q.Code || q.NoiDung)
       ];
 
@@ -155,8 +157,10 @@ const SurveysResponses: React.FC = () => {
           resp.HoTen,
           resp.Email,
           resp.SoDienThoai,
+          resp.ToChuc || '',
           resp.TongDiem,
           resp.PhanLoai,
+          typeof resp.DiemThanhPhan === 'object' ? JSON.stringify(resp.DiemThanhPhan) : (resp.DiemThanhPhan || ''),
           ...questions.map(q => resp.answers[q.ID] || '')
         ];
         return row;
