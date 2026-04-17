@@ -103,11 +103,27 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
           )}
 
           <div className="flex flex-wrap justify-center gap-4 pt-6">
-            <button className="flex items-center gap-2 px-8 py-4 bg-text-main text-white rounded-2xl font-bold hover:bg-black transition-all shadow-xl">
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-2 px-8 py-4 bg-text-main text-white rounded-2xl font-bold hover:bg-black transition-all shadow-xl"
+            >
               <Download size={18} />
               Tải báo cáo (PDF)
             </button>
-            <button className="flex items-center gap-2 px-8 py-4 bg-white border border-border-main text-text-main rounded-2xl font-bold hover:bg-bg-main transition-all">
+            <button
+              onClick={() => {
+                if (navigator.share) {
+                  navigator.share({
+                    title: survey.name,
+                    url: window.location.href
+                  }).catch(console.error);
+                } else {
+                  navigator.clipboard.writeText(window.location.href);
+                  alert('Đã copy link!');
+                }
+              }}
+              className="flex items-center gap-2 px-8 py-4 bg-white border border-border-main text-text-main rounded-2xl font-bold hover:bg-bg-main transition-all"
+            >
               <Share2 size={18} />
               Chia sẻ
             </button>

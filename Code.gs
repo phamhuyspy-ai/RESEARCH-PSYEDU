@@ -176,7 +176,7 @@ function initAllSheets(ss) {
     [APP_CONFIG.SHEETS.SETTINGS]: ["Key", "Value", "Description", "UpdatedAt"],
     [APP_CONFIG.SHEETS.ACCOUNTS]: ["UID", "Email", "Name", "Role", "PasswordHash", "PIN", "Status", "CreatedAt"],
     [APP_CONFIG.SHEETS.SURVEYS]: ["ID", "Code", "Title", "FileID", "Status", "Category", "Thumbnail", "SettingsJSON", "CreatedAt", "UpdatedAt"],
-    [APP_CONFIG.SHEETS.RESPONSES]: ["ID", "SurveyID", "UserName", "UserEmail", "UserPhone", "TotalScore", "Interpretation", "CreatedAt"],
+    [APP_CONFIG.SHEETS.RESPONSES]: ["ID", "SurveyID", "UserName", "UserEmail", "UserPhone", "TotalScore", "Interpretation", "GroupScores", "Status", "CreatedAt"],
     [APP_CONFIG.SHEETS.SYSTEM_LOGS]: ["Timestamp", "Level", "Action", "Detail", "User"]
   };
 
@@ -499,13 +499,20 @@ function handleSubmitResponse(payload) {
     logSheet.appendRow([
       submission.submission_id || "RES_"+Utilities.getUuid().substring(0,8), 
       surveyId || surveyCode, 
-      surveyRow.rowValues[2], // Survey Name
-      submission.user_email || 'Anonymous', 
-      new Date(),
+      submission.user_name || 'Anonymous',
+      submission.user_email || '', 
+      submission.user_phone || '',
       submission.total_score || 0,
       submission.result_interpretation || "Complete",
+      JSON.stringify(submission.group_scores || {}),
+      'active',
       new Date()
     ]);
+    
+    // Send Email if configured
+    if (fullMeta.settings && fullMeta.settings.sendEmail && submission.user_email) {
+      sendResultEmail(submission.user_email, surveyRow.rowValues[2] || "Bảng hỏi", submission.total_score || 0, submission.group_scores || {});
+    }
 
     return { 
       success: true, 
@@ -526,10 +533,25 @@ function getResponses(payload) {
   
   for (let i = 1; i < data.length; i++) {
     if (surveyId && data[i][1] !== surveyId) continue;
+    
+    // Safety check for old schema where column 7 was CreatedAt
+    let groups = {};
+    let status = 'active';
+    let createdAt = data[i][9];
+    
+    try {
+      if (typeof data[i][7] === 'string' && data[i][7].startsWith('{')) {
+         groups = JSON.parse(data[i][7]);
+         status = data[i][8];
+      } else {
+         createdAt = data[i][7]; // Fallback for old schema
+      }
+    } catch (e) {}
+
     records.push({
       id: data[i][0], surveyId: data[i][1], name: data[i][2], email: data[i][3],
       phone: data[i][4], score: data[i][5], interpretation: data[i][6], 
-      groupScores: JSON.parse(data[i][7] || '{}'), status: data[i][8], createdAt: data[i][9]
+      groupScores: groups, status: status, createdAt: createdAt
     });
   }
   return { success: true, data: records.reverse() };
@@ -735,7 +757,7 @@ function getFullResponses(surveyId) {
     const survey = surveyDetail.data;
     const surveySS = SpreadsheetApp.openById(survey.fileId);
     
-    const respSheet = surveySS.getSheetByName("KetQua_SPSS");
+    const respSheet = surveySS.getSheetByName("KetQua_TongHop");
     const qSheet = surveySS.getSheetByName("CauHoi_Schema");
     
     const responses = respSheet.getDataRange().getValues();

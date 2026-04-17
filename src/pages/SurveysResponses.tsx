@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const SurveysResponses: React.FC = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -90,17 +90,28 @@ const SurveysResponses: React.FC = () => {
             const [headers, ...rows] = data.responses;
             const mapped = rows.map((row: any[]) => {
               const obj: any = { answers: {} };
-              headers.forEach((header: string, idx: number) => {
-                if (['ResponseID', 'Timestamp', 'Name', 'Email', 'Phone', 'TotalScore'].includes(header)) {
-                  const map: any = { 'ResponseID': 'ID', 'Timestamp': 'NgayTao', 'Name': 'HoTen', 'Email': 'Email', 'Phone': 'SoDienThoai', 'TotalScore': 'TongDiem' };
-                  obj[map[header] || header] = row[idx];
-                } else {
-                  obj.answers[header] = row[idx];
+                for (let idx = 0; idx < headers.length; idx++) {
+                  const header = headers[idx];
+                  if (['ResponseID', 'Timestamp', 'Name', 'Email', 'Phone', 'Org', 'TotalScore', 'Interpretation', 'GroupScores'].includes(header)) {
+                    const map: any = { 
+                      'ResponseID': 'ID', 
+                      'Timestamp': 'NgayTao', 
+                      'Name': 'HoTen', 
+                      'Email': 'Email', 
+                      'Phone': 'SoDienThoai', 
+                      'TotalScore': 'TongDiem',
+                      'Interpretation': 'PhanLoai',
+                      'Org': 'ToChuc',
+                      'GroupScores': 'DiemThanhPhan'
+                    };
+                    obj[map[header] || header] = row[idx];
+                  } else {
+                    obj.answers[header] = row[idx];
+                  }
                 }
+                return obj;
               });
-              return obj;
-            });
-            setResponses(mapped);
+              setResponses(mapped);
           } else {
             setResponses([]);
           }
@@ -185,7 +196,7 @@ const SurveysResponses: React.FC = () => {
         r.PhanLoai
       ]);
 
-      doc.autoTable({
+      autoTable(doc, {
         head: headers,
         body: data,
         startY: 30,

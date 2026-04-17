@@ -98,9 +98,13 @@ const AdminLayout: React.FC = () => {
     <div className="min-h-screen bg-bg-main flex flex-col md:flex-row text-text-main">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-[240px] bg-sidebar text-white py-6">
-        <div className="logo px-6 pb-8 font-bold text-lg tracking-tight flex items-center gap-2">
-          <div className="w-6 h-6 bg-primary rounded-md" />
-          PsychAdmin
+        <div className="logo px-6 pb-8 flex items-center gap-2">
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-6 max-w-[120px] object-contain" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="w-6 h-6 bg-primary rounded-md" />
+          )}
+          <span className="font-bold text-lg tracking-tight line-clamp-1">{orgName || 'PsychAdmin'}</span>
         </div>
 
         <nav className="flex-1">
@@ -127,8 +131,12 @@ const AdminLayout: React.FC = () => {
       {/* Mobile Header */}
       <header className="md:hidden bg-white border-b border-border-main p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-primary rounded-md" />
-          <span className="font-bold text-text-main">PsychAdmin</span>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-6 max-w-[120px] object-contain" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="w-6 h-6 bg-primary rounded-md" />
+          )}
+          <span className="font-bold text-text-main line-clamp-1">{orgName || 'PsychAdmin'}</span>
         </div>
         <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-text-muted">
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}

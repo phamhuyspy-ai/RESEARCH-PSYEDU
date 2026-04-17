@@ -18,7 +18,7 @@ import { Chatbot } from '../components/Chatbot';
 
 const PublicPortal: React.FC = () => {
   const { surveys } = useAppStore();
-  const { orgName } = useSettingsStore();
+  const { orgName, logoUrl } = useSettingsStore();
 
   const displaySurveys = surveys;
 
@@ -37,7 +37,11 @@ const PublicPortal: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-8 max-w-[120px] object-contain" referrerPolicy="no-referrer" />
+              ) : (
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
+              )}
               <span className="text-lg font-bold tracking-tight">{orgName}</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
@@ -149,7 +153,11 @@ const PublicPortal: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
+                {logoUrl ? (
+                  <img src={logoUrl} alt="Logo" className="h-8 max-w-[120px] object-contain grayscale opacity-70" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
+                )}
                 <span className="text-lg font-bold tracking-tight">{orgName}</span>
               </div>
               <p className="text-sm text-text-muted leading-relaxed">

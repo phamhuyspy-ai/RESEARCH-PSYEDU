@@ -7,7 +7,7 @@ import { gasService } from '../services/gasService';
 import { Lock, Mail, Key, AlertCircle, Loader2, Globe, CheckCircle2, ChevronRight, ShieldCheck } from 'lucide-react';
 
 const Login: React.FC = () => {
-  const { gasUrl, updateSettings } = useSettingsStore();
+  const { gasUrl, updateSettings, logoUrl } = useSettingsStore();
   const [step, setStep] = useState<'pin' | 'auth'>('pin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -119,9 +119,13 @@ const Login: React.FC = () => {
     <div className="min-h-screen bg-bg-main flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="flex justify-center">
-          <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-primary/20 rotate-3 transform hover:rotate-0 transition-transform">
-            <Lock size={32} />
-          </div>
+          {logoUrl ? (
+            <img src={logoUrl} alt="Logo" className="h-16 max-w-[200px] object-contain mb-4" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="h-16 w-16 bg-primary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-primary/20 rotate-3 transform hover:rotate-0 transition-transform">
+              <Lock size={32} />
+            </div>
+          )}
         </div>
         <h2 className="mt-8 text-center text-3xl font-black text-text-main tracking-tight">
           {step === 'pin' ? 'Khu vực quản trị' : isForgotPassword ? 'Quên mật khẩu' : 'Đăng nhập hệ thống'}
