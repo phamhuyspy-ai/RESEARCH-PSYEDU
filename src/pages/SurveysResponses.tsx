@@ -70,9 +70,21 @@ const SurveysResponses: React.FC = () => {
     setIsLoading(true);
     setResponses([]);
     try {
-      const response = await gasService.getFullResponses(selectedSurveyId);
+      const survey = surveys.find(s => s.id === selectedSurveyId);
+      const sheetName = survey?.name || 'KetQua_TongHop';
+      
+      // Try new endpoint first, which searches by sheetName automatically
+      let response = await gasService.request('get_sheet_data', { sheetName });
+      
+      if (!response.success || !response.data) {
+        // Fallback to get_full_responses
+        response = await gasService.request('get_full_responses', { surveyId: selectedSurveyId, sheetName });
+      }
+
       if (response.success && response.data) {
-        const data = response.data;
+        // If data is returned directly as a 2D array (e.g. from get_sheet_data), wrap it in expected structure
+        let data = Array.isArray(response.data) ? { responses: response.data, questions: [] } : response.data;
+        
         setQuestions(data.questions || []);
         
         // Merge details into responses if they exist, otherwise assume wide format
@@ -193,7 +205,9 @@ const SurveysResponses: React.FC = () => {
 
       const worksheet = XLSX.utils.aoa_to_sheet(exportData);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'KetQua_TongHop');
+      
+      const sheetName = selectedSurvey?.name ? selectedSurvey.name.substring(0, 31).replace(/[\[\]*?:\/\\]/g, '') : 'KetQua_TongHop';
+      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'KetQua_TongHop');
       
       XLSX.writeFile(workbook, `Ket_qua_${selectedSurvey?.name || 'Khao_sat'}_${new Date().getTime()}.xlsx`);
     } catch (err) {
