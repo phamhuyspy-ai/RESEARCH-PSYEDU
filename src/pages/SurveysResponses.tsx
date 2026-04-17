@@ -89,11 +89,14 @@ const SurveysResponses: React.FC = () => {
         } else {
           // New architecture: data.responses is already in suitable format (Wide)
           // We might need to map it if it's raw sheet data (array of arrays)
-          if (Array.isArray(data.responses) && data.responses.length > 1) {
-            setRawResponses(data.responses); // Save raw data for Excel export
-            const [headers, ...rows] = data.responses;
-            const mapped = rows.map((row: any[]) => {
-              const obj: any = { answers: {} };
+          if (Array.isArray(data.responses) && data.responses.length > 0) {
+            
+            // Check if it's a 2D array (e.g. from Google Sheets getValues())
+            if (Array.isArray(data.responses[0])) {
+              setRawResponses(data.responses); // Save raw data for Excel export
+              const [headers, ...rows] = data.responses;
+              const mapped = rows.map((row: any[]) => {
+                const obj: any = { answers: {} };
                 for (let idx = 0; idx < headers.length; idx++) {
                   const header = headers[idx];
                   if (['ResponseID', 'Timestamp', 'Name', 'Email', 'Phone', 'Org', 'TotalScore', 'Interpretation', 'GroupScores'].includes(header)) {
@@ -116,6 +119,17 @@ const SurveysResponses: React.FC = () => {
                 return obj;
               });
               setResponses(mapped);
+            } else {
+              // It is an array of objects (Legacy fallback)
+              // Just pass it directly but ensure the format is safe
+              const mapped = data.responses.map((resp: any) => ({
+                ...resp,
+                answers: resp.answers || {}
+              }));
+              setResponses(mapped);
+              // For export, we don't have raw 2d array, so it will fallback to manual mapping in exportToExcel
+              setRawResponses([]); 
+            }
           } else {
             setResponses([]);
           }
@@ -230,11 +244,13 @@ const SurveysResponses: React.FC = () => {
     }
   };
 
-  const filteredResponses = responses.filter(r => 
-    r.HoTen?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.Email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    r.SoDienThoai?.includes(searchTerm)
-  );
+  const filteredResponses = responses.filter(r => {
+    const search = searchTerm.toLowerCase();
+    const nameStr = String(r.HoTen || '').toLowerCase();
+    const emailStr = String(r.Email || '').toLowerCase();
+    const phoneStr = String(r.SoDienThoai || '').toLowerCase();
+    return nameStr.includes(search) || emailStr.includes(search) || phoneStr.includes(search);
+  });
 
   return (
     <div className="space-y-6">
@@ -288,7 +304,12 @@ const SurveysResponses: React.FC = () => {
               />
             </div>
             <div className="space-y-2 overflow-y-auto pr-2 custom-scrollbar flex-1">
-              {Array.isArray(surveys) && surveys.filter(s => s.name?.toLowerCase().includes(surveySearchTerm.toLowerCase()) || s.code?.toLowerCase().includes(surveySearchTerm.toLowerCase())).map(survey => (
+              {Array.isArray(surveys) && surveys.filter(s => {
+                const term = surveySearchTerm.toLowerCase();
+                const sName = String(s.name || '').toLowerCase();
+                const sCode = String(s.code || '').toLowerCase();
+                return sName.includes(term) || sCode.includes(term);
+              }).map(survey => (
                 <button
                   key={survey.id}
                   onClick={() => setSelectedSurveyId(survey.id)}
@@ -358,7 +379,7 @@ const SurveysResponses: React.FC = () => {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center text-primary font-black">
-                              {r.HoTen?.charAt(0) || <User size={18} />}
+                              {String(r.HoTen || '').charAt(0) || <User size={18} />}
                             </div>
                             <div>
                               <div className="text-sm font-bold text-text-main leading-tight">{r.HoTen || 'Ẩn danh'}</div>

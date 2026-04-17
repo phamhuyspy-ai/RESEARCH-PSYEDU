@@ -42,7 +42,9 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
       const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
-        logging: false,
+        allowTaint: false,
+        logging: true,
+        imageTimeout: 5000,
         backgroundColor: '#ffffff'
       });
       
@@ -71,10 +73,11 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       }
       
-      pdf.save(`Ket_qua_${survey.name}_${new Date().getTime()}.pdf`);
-    } catch (error) {
+      pdf.save(`Ket_qua_${survey.name || 'KhaoSat'}_${new Date().getTime()}.pdf`);
+    } catch (error: any) {
       console.error('Lỗi khi tải PDF:', error);
-      alert('Có lỗi xảy ra khi tải PDF.');
+      alert(`Có lỗi xảy ra khi tải PDF: ${error?.message || 'Không xác định'}. Thử lại bằng tính năng In của trình duyệt.`);
+      window.print();
     } finally {
       setIsExportingPDF(false);
     }
