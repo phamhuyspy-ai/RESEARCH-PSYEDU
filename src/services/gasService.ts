@@ -9,12 +9,15 @@ interface GasResponse<T = any> {
 }
 
 export const gasService = {
-  async request<T = any>(action: string, payload: any = {}): Promise<GasResponse<T>> {
+  async request<T = any>(action: string, payload: any = {}, retryCount = 1): Promise<GasResponse<T>> {
     const gasUrl = useSettingsStore.getState().gasUrl;
     
     if (!gasUrl) {
       return { success: false, message: 'GAS URL not configured' };
     }
+
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), 15000); // 15s timeout
 
     try {
       const response = await fetch(gasUrl, {
@@ -24,7 +27,9 @@ export const gasService = {
           'Content-Type': 'text/plain;charset=utf-8', 
         },
         body: JSON.stringify({ action, payload }),
+        signal: abortController.signal
       });
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -32,14 +37,25 @@ export const gasService = {
 
       const result = await response.json();
       return result;
-    } catch (error) {
+    } catch (error: any) {
+      clearTimeout(timeoutId);
+      
+      // Auto-retry once on network/timeout errors
+      if (retryCount > 0 && (error.name === 'AbortError' || error.message.includes('Failed to fetch'))) {
+        console.warn(`GAS Request failed. Retrying... (${action})`);
+        // Exponential backoff or simple delay
+        await new Promise(res => setTimeout(res, 1500));
+        return this.request(action, payload, retryCount - 1);
+      }
+
       console.error('GAS Request Error (Full):', error);
       
       let errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       
-      // "Failed to fetch" usually indicates a CORS error or network issue with GAS
-      if (errorMessage.includes('Failed to fetch')) {
-        errorMessage = 'Lỗi kết nối (CORS). Vui lòng đảm bảo Google Apps Script đã được Deploy dưới dạng Web App với quyền truy cập "Anyone" (Bất kỳ ai).';
+      if (error.name === 'AbortError') {
+        errorMessage = 'Máy chủ phản hồi quá lâu (Timeout). Vui lòng thử lại sau.';
+      } else if (errorMessage.includes('Failed to fetch')) {
+        errorMessage = 'Lỗi kết nối mạng hoặc CORS. Hãy chắc chắn Web App URL cấp quyền "Anyone".';
       }
 
       return { 

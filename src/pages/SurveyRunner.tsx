@@ -234,10 +234,11 @@ const SurveyRunner: React.FC = () => {
 
   if (!survey) return null;
 
-  const currentBlock = survey.blocks[currentBlockIndex];
-  const isLastBlock = currentBlockIndex === survey.blocks.length - 1;
+  const currentBlock = survey.blocks ? survey.blocks[currentBlockIndex] : undefined;
+  const blocksCount = survey.blocks ? survey.blocks.length : 0;
+  const isLastBlock = currentBlockIndex === blocksCount - 1;
   const branding = survey.branding || { primaryColor: '#3b82f6', backgroundColor: '#f8fafc' };
-  const contactBlock = survey.blocks.find(b => b.type === 'contact');
+  const contactBlock = survey.blocks?.find(b => b.type === 'contact');
   const contactFields = contactBlock?.contactFields || { name: true, email: true, phone: true, org: true };
 
   return (
@@ -260,7 +261,7 @@ const SurveyRunner: React.FC = () => {
               <span className="font-bold text-text-main tracking-tight">{globalSettings.orgName}</span>
             </div>
             <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-bg-main px-2 py-1 rounded">
-              {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${survey.blocks.length}`}
+              {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${blocksCount}`}
             </div>
           </div>
         </header>
@@ -271,7 +272,7 @@ const SurveyRunner: React.FC = () => {
         <div 
           className="h-full transition-all duration-700 ease-out" 
           style={{ 
-            width: `${((currentBlockIndex + 2) / (survey.blocks.length + 1)) * 100}%`,
+            width: `${((currentBlockIndex + 2) / (blocksCount + 1)) * 100}%`,
             backgroundColor: branding.primaryColor
           }}
         />

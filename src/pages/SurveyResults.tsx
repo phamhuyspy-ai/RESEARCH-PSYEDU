@@ -53,11 +53,7 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      // If content is very long, it will be cropped on one page. 
-      // But usually results are short enough, or we can handle multi-page if needed.
-      // For now, scale it to fit or just let it overflow onto next page manually (basic version).
       if (pdfHeight > pdf.internal.pageSize.getHeight()) {
-          // Adjust width to fit entire height into one page if needed, or add pages.
           let heightLeft = pdfHeight;
           let position = 0;
           pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
@@ -75,8 +71,8 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
       
       pdf.save(`Ket_qua_${survey.name || 'KhaoSat'}_${new Date().getTime()}.pdf`);
     } catch (error: any) {
-      console.error('Lỗi khi tải PDF:', error);
-      alert(`Có lỗi xảy ra khi tải PDF: ${error?.message || 'Không xác định'}. Thử lại bằng tính năng In của trình duyệt.`);
+      console.warn('Lỗi khi tải PDF bằng html2canvas, chuyển sang in mặc định:', error);
+      // Silently fallback to window print when canvas parsing fails (e.g., due to oklab colors)
       window.print();
     } finally {
       setIsExportingPDF(false);
@@ -188,7 +184,7 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
         </div>
 
         {/* Score Groups Breakdown */}
-        {survey.settings.showResults && survey.scoreGroups.length > 0 && (
+        {survey.settings?.showResults && survey.scoreGroups && survey.scoreGroups.length > 0 && (
           <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main animate-in fade-in slide-in-from-bottom-6 duration-700">
             <h3 className="text-lg font-bold text-text-main mb-8 flex items-center gap-3">
               <BarChart3 size={24} style={{ color: branding.primaryColor }} />

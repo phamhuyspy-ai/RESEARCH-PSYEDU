@@ -17,13 +17,6 @@ export const Chatbot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Only render if enabled and API key is present
-  if (!aiConfig.enabled || !aiConfig.apiKey) {
-    return null;
-  }
-
-  const ai = aiConfig.provider === 'gemini' ? new GoogleGenAI({ apiKey: aiConfig.apiKey }) : null;
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -31,6 +24,13 @@ export const Chatbot: React.FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isOpen]);
+
+  // Only render if enabled and API key is present
+  if (!aiConfig.enabled || !aiConfig.apiKey) {
+    return null;
+  }
+
+  const ai = aiConfig.provider === 'gemini' ? new GoogleGenAI({ apiKey: aiConfig.apiKey }) : null;
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;

@@ -18,9 +18,7 @@ import {
   FileDown,
   ExternalLink
 } from 'lucide-react';
-import * as XLSX from 'xlsx';
-import { jsPDF } from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { exportToExcel, exportToPDF } from '../utils/exportUtils';
 
 const SurveysResponses: React.FC = () => {
   const [surveys, setSurveys] = useState<Survey[]>([]);
@@ -156,115 +154,27 @@ const SurveysResponses: React.FC = () => {
     }
   };
 
-  const exportToExcel = () => {
-    if (responses.length === 0) return;
+  const handleExportExcel = () => {
     setIsExporting(true);
-
-    try {
-      const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
-      
-      let exportData: any[] = [];
-      
-      if (rawResponses && rawResponses.length > 0) {
-        // Use the exact raw data from Google Sheet
-        exportData = rawResponses;
-      } else {
-        // Fallback: Prepare headers and map fields manually
-        // Columns: Metadata, then Questions (using code or content)
-        const headers = [
-          'ResponseID',
-          'Timestamp',
-          'Name',
-          'Email',
-          'Phone',
-          'Org',
-          'TotalScore',
-          'Interpretation',
-          'GroupScores',
-          ...questions.map(q => q.Code || q.NoiDung)
-        ];
-
-        // Prepare data rows
-        const rows = responses.map(resp => {
-          const row = [
-            resp.ID,
-            new Date(resp.NgayTao).toLocaleString('vi-VN'),
-            resp.HoTen,
-            resp.Email,
-            resp.SoDienThoai,
-            resp.ToChuc || '',
-            resp.TongDiem,
-            resp.PhanLoai,
-            typeof resp.DiemThanhPhan === 'object' ? JSON.stringify(resp.DiemThanhPhan) : (resp.DiemThanhPhan || ''),
-            ...questions.map(q => resp.answers[q.ID] || '')
-          ];
-          return row;
-        });
-        exportData = [headers, ...rows];
-      }
-
-      const worksheet = XLSX.utils.aoa_to_sheet(exportData);
-      const workbook = XLSX.utils.book_new();
-      
-      const sheetName = selectedSurvey?.name ? selectedSurvey.name.substring(0, 31).replace(/[\[\]*?:\/\\]/g, '') : 'KetQua_TongHop';
-      XLSX.utils.book_append_sheet(workbook, worksheet, sheetName || 'KetQua_TongHop');
-      
-      XLSX.writeFile(workbook, `Ket_qua_${selectedSurvey?.name || 'Khao_sat'}_${new Date().getTime()}.xlsx`);
-    } catch (err) {
-      console.error(err);
-      alert('Lỗi khi xuất file Excel');
-    } finally {
-      setIsExporting(false);
-    }
+    exportToExcel(surveys, selectedSurveyId, responses, rawResponses, questions);
+    setIsExporting(false);
   };
 
-  const exportToPDF = () => {
-    if (responses.length === 0) return;
+  const handleExportPDF = () => {
     setIsExporting(true);
-
-    try {
-      const doc = new jsPDF('l', 'mm', 'a4') as any;
-      const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
-
-      // doc.setFont('Inter'); // Ensure fonts are loaded if needed
-      doc.text(`BÁO CÁO KẾT QUẢ KHẢO SÁT: ${selectedSurvey?.name || ''}`, 15, 15);
-      doc.setFontSize(10);
-      doc.text(`Ngày xuất báo cáo: ${new Date().toLocaleString('vi-VN')}`, 15, 22);
-
-      const headers = [['ID', 'Ngày nộp', 'Họ tên', 'Điểm', 'Phân loại']];
-      const data = responses.map(r => [
-        r.ID,
-        new Date(r.NgayTao).toLocaleDateString('vi-VN'),
-        r.HoTen,
-        r.TongDiem,
-        r.PhanLoai
-      ]);
-
-      autoTable(doc, {
-        head: headers,
-        body: data,
-        startY: 30,
-        theme: 'grid',
-        headStyles: { fillStyle: '#3b82f6', textColor: 255 },
-        styles: { fontSize: 8, font: 'helvetica' }
-      });
-
-      doc.save(`Bao_cao_${selectedSurvey?.name || 'Khao_sat'}_${new Date().getTime()}.pdf`);
-    } catch (err: any) {
-      console.error(err);
-      alert('Lỗi khi xuất file PDF: ' + (err?.message || err));
-    } finally {
-      setIsExporting(false);
-    }
+    exportToPDF(surveys, selectedSurveyId, responses);
+    setIsExporting(false);
   };
 
-  const filteredResponses = responses.filter(r => {
-    const search = searchTerm.toLowerCase();
-    const nameStr = String(r.HoTen || '').toLowerCase();
-    const emailStr = String(r.Email || '').toLowerCase();
-    const phoneStr = String(r.SoDienThoai || '').toLowerCase();
-    return nameStr.includes(search) || emailStr.includes(search) || phoneStr.includes(search);
-  });
+  const filteredResponses = [...responses]
+    .sort((a, b) => new Date(b.NgayTao).getTime() - new Date(a.NgayTao).getTime())
+    .filter(r => {
+      const search = searchTerm.toLowerCase();
+      const nameStr = String(r.HoTen || '').toLowerCase();
+      const emailStr = String(r.Email || '').toLowerCase();
+      const phoneStr = String(r.SoDienThoai || '').toLowerCase();
+      return nameStr.includes(search) || emailStr.includes(search) || phoneStr.includes(search);
+    });
 
   return (
     <div className="space-y-6">
@@ -281,7 +191,7 @@ const SurveysResponses: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button 
-            onClick={exportToExcel}
+            onClick={handleExportExcel}
             disabled={isExporting || responses.length === 0}
             className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-sm bg-white border-2 border-border-main hover:border-primary transition-all"
           >
@@ -289,7 +199,7 @@ const SurveysResponses: React.FC = () => {
             Xuất Excel
           </button>
           <button 
-            onClick={exportToPDF}
+            onClick={handleExportPDF}
             disabled={isExporting || responses.length === 0}
             className="btn-secondary px-4 py-2.5 flex items-center gap-2 text-sm bg-white border-2 border-border-main hover:border-primary transition-all"
           >
