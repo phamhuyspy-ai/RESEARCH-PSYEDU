@@ -36,7 +36,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
   };
 
   return (
-    <div className="card-panel sticky top-24 space-y-6 max-h-[calc(100vh-120px)] overflow-y-auto custom-scrollbar">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between border-b border-border-main pb-4">
         <h3 className="text-sm font-bold text-text-main flex items-center gap-2">
           <Settings size={16} className="text-primary" />
@@ -171,6 +171,20 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       {/* Options Configuration */}
       {(block.type === 'single_choice' || block.type === 'multi_choice' || block.type === 'likert') && (
         <div className="pt-4 border-t border-border-main space-y-4">
+          {/* Display Layout Toggle */}
+          <div className="flex items-center justify-between mb-4">
+            <span className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Hiển thị đáp án</span>
+            <select
+              value={block.layout || 'vertical'}
+              onChange={(e) => handleUpdate({ layout: e.target.value as any })}
+              className="px-2 py-1 bg-bg-main border border-border-main rounded text-xs outline-none"
+            >
+              <option value="vertical">Danh sách dọc</option>
+              <option value="horizontal">Dàn hàng ngang</option>
+              <option value="grid">Lưới 2 cột</option>
+            </select>
+          </div>
+
           <div className="flex items-center justify-between">
             <label className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Danh sách đáp án</label>
             <button
@@ -220,12 +234,45 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
               </div>
             ))}
           </div>
+
+          {/* Allow Other Toggle */}
+          {(block.type === 'single_choice' || block.type === 'multi_choice') && (
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-text-main">Thêm mục "Khác"</span>
+                <span className="text-[10px] text-text-muted">Cho phép người phản hồi nhập chữ</span>
+              </div>
+              <button
+                onClick={() => handleUpdate({ allowOther: !block.allowOther })}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  block.allowOther ? 'bg-primary' : 'bg-gray-200'
+                }`}
+              >
+                <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                  block.allowOther ? 'translate-x-5' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* Matrix Configuration */}
       {block.type === 'matrix' && (
         <div className="pt-4 border-t border-border-main space-y-6">
+          {/* Matrix Display Format */}
+          <div className="flex items-center justify-between mb-2">
+            <span className="block text-[10px] font-bold text-text-muted uppercase tracking-widest">Định dạng hiển thị</span>
+            <select
+              value={block.matrixLayout || 'table'}
+              onChange={(e) => handleUpdate({ matrixLayout: e.target.value as any })}
+              className="px-2 py-1 bg-bg-main border border-border-main rounded text-xs outline-none"
+            >
+              <option value="table">Khung Bảng</option>
+              <option value="linear">Tuyến tính (Dọc)</option>
+            </select>
+          </div>
+
           {/* Rows */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

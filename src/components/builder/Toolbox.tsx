@@ -21,15 +21,14 @@ const Toolbox: React.FC<ToolboxProps> = ({ onAddBlock }) => {
     { type: 'content', label: 'Nội dung', icon: Type, description: 'Giới thiệu, hướng dẫn' },
     { type: 'section', label: 'Phần mới (Section)', icon: SplitSquareHorizontal, description: 'Chia trang khảo sát' },
     { type: 'contact', label: 'Thông tin', icon: UserCircle, description: 'Họ tên, SĐT, Email...' },
-    { type: 'single_choice', label: 'Trắc nghiệm', icon: ListTodo, description: 'Chọn 1 đáp án' },
+    { type: 'single_choice', label: 'Trắc nghiệm tuyến tính', icon: ListTodo, description: 'Chọn 1 đáp án hoặc Thang điểm' },
     { type: 'multi_choice', label: 'Nhiều lựa chọn', icon: CheckSquare, description: 'Chọn nhiều đáp án' },
-    { type: 'likert', label: 'Thang đo', icon: BarChart, description: 'Mức độ (1-5, 1-7...)' },
     { type: 'text', label: 'Văn bản', icon: AlignLeft, description: 'Câu hỏi mở' },
     { type: 'matrix', label: 'Ma trận', icon: Grid3X3, description: 'Bảng câu hỏi phức tạp' },
   ];
 
   return (
-    <div className="card-panel sticky top-24">
+    <div className="card-panel">
       <h3 className="text-xs font-bold text-text-muted uppercase tracking-widest mb-4">Toolbox</h3>
       <div className="grid grid-cols-1 gap-2">
         {tools.map((tool) => (

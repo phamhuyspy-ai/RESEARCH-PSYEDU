@@ -19,15 +19,19 @@ import {
   Code,
   Download,
   Play,
-  Square
+  Square,
+  Database
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
 import { gasService } from '../services/gasService';
 
+import { useSettingsStore } from '../stores/settingsStore';
+
 const Surveys: React.FC = () => {
   const { surveys, deleteSurvey, updateSurvey } = useAppStore();
+  const { sheetUrl } = useSettingsStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'published'>('all');
   const [selectedSurveyForShare, setSelectedSurveyForShare] = useState<string | null>(null);
@@ -207,6 +211,15 @@ const Surveys: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                        <a 
+                          href={survey.fileId ? `https://docs.google.com/spreadsheets/d/${survey.fileId}/edit` : (sheetUrl || 'https://docs.google.com/spreadsheets')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 text-text-muted hover:text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                          title="Mở Google Sheet"
+                        >
+                          <Database size={16} />
+                        </a>
                         <Link 
                           to={`/admin/builder/${survey.id}`}
                           className="p-2 text-text-muted hover:text-primary hover:bg-primary/5 rounded-lg transition-all"

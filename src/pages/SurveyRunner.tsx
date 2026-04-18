@@ -448,31 +448,71 @@ const SurveyRunner: React.FC = () => {
                       {/* Block Types Rendering */}
                       <div className="space-y-4">
                         {(currentBlock.type === 'single_choice' || currentBlock.type === 'likert') && (
-                          <div className="space-y-3">
+                          <div className={
+                            currentBlock.layout === 'horizontal' ? "flex flex-wrap gap-3" :
+                            currentBlock.layout === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 gap-3" :
+                            "space-y-3"
+                          }>
                             {currentBlock.options?.map((opt) => (
                               <button
                                 key={opt.value}
                                 onClick={() => setResponses({ ...responses, [currentBlock.id]: opt.value })}
-                                className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
+                                className={`p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group flex-1 min-w-[200px] ${
                                   responses[currentBlock.id] === opt.value
                                     ? 'border-primary bg-primary/5 text-primary font-bold'
                                     : 'border-bg-main hover:border-border-main text-text-main'
-                                }`}
+                                } ${currentBlock.layout !== 'horizontal' && currentBlock.layout !== 'grid' ? 'w-full' : ''}`}
                                 style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}
                               >
                                 <span>{opt.label}</span>
-                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-3 ${
                                   responses[currentBlock.id] === opt.value ? 'border-primary bg-primary' : 'border-border-main'
                                 }`} style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined, backgroundColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}>
                                   {responses[currentBlock.id] === opt.value && <div className="w-2 h-2 bg-white rounded-full" />}
                                 </div>
                               </button>
                             ))}
+                            
+                            {currentBlock.allowOther && (
+                              <div className={`p-5 text-left rounded-2xl border-2 transition-all flex flex-col group flex-1 min-w-[200px] ${
+                                responses[currentBlock.id] === '__other__'
+                                  ? 'border-primary bg-primary/5 text-primary'
+                                  : 'border-bg-main hover:border-border-main text-text-main'
+                              } ${currentBlock.layout !== 'horizontal' && currentBlock.layout !== 'grid' ? 'w-full' : ''}`}
+                              style={{ borderColor: responses[currentBlock.id] === '__other__' ? branding.primaryColor : undefined } as any}
+                              >
+                                <button
+                                  onClick={() => setResponses({ ...responses, [currentBlock.id]: '__other__' })}
+                                  className="flex items-center justify-between w-full"
+                                >
+                                  <span className={responses[currentBlock.id] === '__other__' ? 'font-bold' : ''}>Khác (ghi chú)...</span>
+                                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ml-3 ${
+                                    responses[currentBlock.id] === '__other__' ? 'border-primary bg-primary' : 'border-border-main'
+                                  }`} style={{ borderColor: responses[currentBlock.id] === '__other__' ? branding.primaryColor : undefined, backgroundColor: responses[currentBlock.id] === '__other__' ? branding.primaryColor : undefined } as any}>
+                                    {responses[currentBlock.id] === '__other__' && <div className="w-2 h-2 bg-white rounded-full" />}
+                                  </div>
+                                </button>
+                                {responses[currentBlock.id] === '__other__' && (
+                                  <input
+                                    type="text"
+                                    autoFocus
+                                    placeholder="Vui lòng nhập..."
+                                    value={responses[`${currentBlock.id}_other_text`] || ''}
+                                    onChange={(e) => setResponses({ ...responses, [`${currentBlock.id}_other_text`]: e.target.value })}
+                                    className="mt-3 w-full p-2 border-b border-border-main bg-transparent outline-none focus:border-primary text-sm text-text-main"
+                                  />
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
 
                         {currentBlock.type === 'multi_choice' && (
-                          <div className="space-y-3">
+                          <div className={
+                            currentBlock.layout === 'horizontal' ? "flex flex-wrap gap-3" :
+                            currentBlock.layout === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 gap-3" :
+                            "space-y-3"
+                          }>
                             {currentBlock.options?.map((opt) => {
                               const currentVals = Array.isArray(responses[currentBlock.id]) ? responses[currentBlock.id] : [];
                               const isSelected = currentVals.includes(opt.value);
@@ -485,15 +525,15 @@ const SurveyRunner: React.FC = () => {
                                       : [...currentVals, opt.value];
                                     setResponses({ ...responses, [currentBlock.id]: newVals });
                                   }}
-                                  className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
+                                  className={`p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group flex-1 min-w-[200px] ${
                                     isSelected
                                       ? 'border-primary bg-primary/5 text-primary font-bold'
                                       : 'border-bg-main hover:border-border-main text-text-main'
-                                  }`}
+                                  } ${currentBlock.layout !== 'horizontal' && currentBlock.layout !== 'grid' ? 'w-full' : ''}`}
                                   style={{ borderColor: isSelected ? branding.primaryColor : undefined } as any}
                                 >
                                   <span>{opt.label}</span>
-                                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ml-3 ${
                                     isSelected ? 'border-primary bg-primary' : 'border-border-main'
                                   }`} style={{ borderColor: isSelected ? branding.primaryColor : undefined, backgroundColor: isSelected ? branding.primaryColor : undefined } as any}>
                                     {isSelected && <CheckCircle2 size={14} className="text-white" />}
@@ -501,76 +541,84 @@ const SurveyRunner: React.FC = () => {
                                 </button>
                               );
                             })}
+                            
+                            {currentBlock.allowOther && (() => {
+                               const currentVals = Array.isArray(responses[currentBlock.id]) ? responses[currentBlock.id] : [];
+                               const isSelected = currentVals.includes('__other__');
+                               return (
+                                 <div className={`p-5 text-left rounded-2xl border-2 transition-all flex flex-col group flex-1 min-w-[200px] ${
+                                   isSelected
+                                     ? 'border-primary bg-primary/5 text-primary'
+                                     : 'border-bg-main hover:border-border-main text-text-main'
+                                 } ${currentBlock.layout !== 'horizontal' && currentBlock.layout !== 'grid' ? 'w-full' : ''}`}
+                                 style={{ borderColor: isSelected ? branding.primaryColor : undefined } as any}
+                                 >
+                                    <button
+                                      onClick={() => {
+                                        const newVals = isSelected 
+                                          ? currentVals.filter((v: any) => v !== '__other__')
+                                          : [...currentVals, '__other__'];
+                                        setResponses({ ...responses, [currentBlock.id]: newVals });
+                                      }}
+                                      className="flex items-center justify-between w-full"
+                                    >
+                                      <span className={isSelected ? 'font-bold' : ''}>Khác (ghi chú)...</span>
+                                      <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all flex-shrink-0 ml-3 ${
+                                        isSelected ? 'border-primary bg-primary' : 'border-border-main'
+                                      }`} style={{ borderColor: isSelected ? branding.primaryColor : undefined, backgroundColor: isSelected ? branding.primaryColor : undefined } as any}>
+                                        {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                                      </div>
+                                    </button>
+                                    {isSelected && (
+                                      <input
+                                        type="text"
+                                        autoFocus
+                                        placeholder="Vui lòng nhập..."
+                                        value={responses[`${currentBlock.id}_other_text`] || ''}
+                                        onChange={(e) => setResponses({ ...responses, [`${currentBlock.id}_other_text`]: e.target.value })}
+                                        className="mt-3 w-full p-2 border-b border-border-main bg-transparent outline-none focus:border-primary text-sm text-text-main"
+                                      />
+                                    )}
+                                 </div>
+                               );
+                            })()}
                           </div>
                         )}
 
                         {currentBlock.type === 'matrix' && (
-                          <div className="overflow-x-auto -mx-10 px-10">
-                            <table className="w-full border-collapse">
-                              <thead>
-                                <tr>
-                                  <th className="p-4 text-left bg-bg-main/50 rounded-tl-2xl"></th>
-                                  {currentBlock.matrixCols?.map((col) => (
-                                    <th key={col.value} className="p-4 text-center bg-bg-main/50 text-[10px] font-bold text-text-muted uppercase tracking-widest last:rounded-tr-2xl">
-                                      {col.label}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
+                          <div className={currentBlock.matrixLayout === 'linear' ? "space-y-6" : "overflow-x-auto -mx-10 px-10"}>
+                            {currentBlock.matrixLayout === 'linear' ? (
+                              <div className="space-y-8">
                                 {currentBlock.matrixRows?.map((row) => (
-                                  <tr key={row.code} className="border-b border-border-main/50 last:border-0">
-                                    <td className="p-4 text-sm font-bold text-text-main">{row.label}</td>
-                                    {currentBlock.matrixCols?.map((col) => {
-                                      const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
-                                                        (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
-                                      const colType = col.type || 'single_choice';
+                                  <div key={row.code} className="space-y-4 bg-bg-main/30 p-6 rounded-2xl border border-border-main">
+                                    <h4 className="font-bold text-text-main text-lg">{row.label}</h4>
+                                    <div className="space-y-3">
+                                      {currentBlock.matrixCols?.map((col) => {
+                                        const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
+                                                          (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
+                                        const colType = col.type || 'single_choice';
 
-                                      return (
-                                        <td key={col.value} className="p-4 text-center">
-                                          {colType === 'single_choice' && (
+                                        if (colType === 'single_choice' || colType === 'multi_choice') {
+                                          return (
                                             <button
+                                              key={col.value}
                                               onClick={() => {
                                                 const currentMatrix = responses[currentBlock.id] || {};
                                                 const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
                                                 
-                                                // Clear other single_choice columns in this row
-                                                currentBlock.matrixCols?.forEach(c => {
-                                                  if ((c.type || 'single_choice') === 'single_choice') {
-                                                    delete currentRowData[c.value];
-                                                  }
-                                                });
-                                                
-                                                currentRowData[col.value] = true;
-
-                                                setResponses({ 
-                                                  ...responses, 
-                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                                });
-                                              }}
-                                              className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
-                                                cellValue === true
-                                                  ? 'border-primary bg-primary'
-                                                  : 'border-border-main hover:border-primary/50'
-                                              }`}
-                                              style={{ 
-                                                borderColor: cellValue === true ? branding.primaryColor : undefined,
-                                                backgroundColor: cellValue === true ? branding.primaryColor : undefined
-                                              } as any}
-                                            >
-                                              {cellValue === true && <div className="w-2 h-2 bg-white rounded-full" />}
-                                            </button>
-                                          )}
-                                          {colType === 'multi_choice' && (
-                                            <button
-                                              onClick={() => {
-                                                const currentMatrix = responses[currentBlock.id] || {};
-                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                                
-                                                if (currentRowData[col.value]) {
-                                                  delete currentRowData[col.value];
-                                                } else {
+                                                if (colType === 'single_choice') {
+                                                  currentBlock.matrixCols?.forEach(c => {
+                                                    if ((c.type || 'single_choice') === 'single_choice') {
+                                                      delete currentRowData[c.value];
+                                                    }
+                                                  });
                                                   currentRowData[col.value] = true;
+                                                } else {
+                                                  if (currentRowData[col.value]) {
+                                                    delete currentRowData[col.value];
+                                                  } else {
+                                                    currentRowData[col.value] = true;
+                                                  }
                                                 }
 
                                                 setResponses({ 
@@ -578,60 +626,177 @@ const SurveyRunner: React.FC = () => {
                                                   [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
                                                 });
                                               }}
-                                              className={`w-6 h-6 rounded border-2 mx-auto transition-all flex items-center justify-center ${
+                                              className={`w-full p-4 text-left rounded-xl border-2 transition-all flex items-center justify-between group ${
                                                 cellValue === true
-                                                  ? 'border-primary bg-primary'
-                                                  : 'border-border-main hover:border-primary/50'
+                                                  ? 'border-primary bg-primary/5 text-primary font-bold'
+                                                  : 'border-bg-main hover:border-border-main text-text-main bg-white'
                                               }`}
-                                              style={{ 
-                                                borderColor: cellValue === true ? branding.primaryColor : undefined,
-                                                backgroundColor: cellValue === true ? branding.primaryColor : undefined
-                                              } as any}
+                                              style={{ borderColor: cellValue === true ? branding.primaryColor : undefined } as any}
                                             >
-                                              {cellValue === true && <CheckCircle2 size={14} className="text-white" />}
+                                              <span>{col.label}</span>
+                                              <div className={`w-5 h-5 rounded-${colType === 'single_choice' ? 'full' : 'lg'} border-2 flex items-center justify-center transition-all flex-shrink-0 ml-3 ${
+                                                cellValue === true ? 'border-primary bg-primary' : 'border-border-main'
+                                              }`} style={{ borderColor: cellValue === true ? branding.primaryColor : undefined, backgroundColor: cellValue === true ? branding.primaryColor : undefined } as any}>
+                                                {cellValue === true && colType === 'single_choice' && <div className="w-2 h-2 bg-white rounded-full" />}
+                                                {cellValue === true && colType === 'multi_choice' && <CheckCircle2 size={14} className="text-white" />}
+                                              </div>
                                             </button>
-                                          )}
-                                          {colType === 'text' && (
-                                            <input
-                                              type="text"
-                                              value={cellValue as string || ''}
-                                              onChange={(e) => {
-                                                const currentMatrix = responses[currentBlock.id] || {};
-                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                                currentRowData[col.value] = e.target.value;
-                                                setResponses({ 
-                                                  ...responses, 
-                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                                });
-                                              }}
-                                              className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
-                                              placeholder="Nhập..."
-                                            />
-                                          )}
-                                          {colType === 'number' && (
-                                            <input
-                                              type="number"
-                                              value={cellValue as string || ''}
-                                              onChange={(e) => {
-                                                const currentMatrix = responses[currentBlock.id] || {};
-                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                                currentRowData[col.value] = e.target.value;
-                                                setResponses({ 
-                                                  ...responses, 
-                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                                });
-                                              }}
-                                              className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
-                                              placeholder="0"
-                                            />
-                                          )}
-                                        </td>
-                                      );
-                                    })}
-                                  </tr>
+                                          );
+                                        } else {
+                                          return (
+                                            <div key={col.value} className="space-y-2">
+                                              <label className="text-sm font-medium text-text-main">{col.label}</label>
+                                              <input
+                                                type={colType}
+                                                value={cellValue as string || ''}
+                                                onChange={(e) => {
+                                                  const currentMatrix = responses[currentBlock.id] || {};
+                                                  const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                  currentRowData[col.value] = e.target.value;
+                                                  setResponses({ 
+                                                    ...responses, 
+                                                    [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                  });
+                                                }}
+                                                className="w-full p-4 bg-white border border-border-main rounded-xl focus:border-primary outline-none"
+                                                placeholder={colType === 'number' ? '0' : 'Nhập...'}
+                                              />
+                                            </div>
+                                          );
+                                        }
+                                      })}
+                                    </div>
+                                  </div>
                                 ))}
-                              </tbody>
-                            </table>
+                              </div>
+                            ) : (
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr>
+                                    <th className="p-4 text-left bg-bg-main/50 rounded-tl-2xl"></th>
+                                    {currentBlock.matrixCols?.map((col) => (
+                                      <th key={col.value} className="p-4 text-center bg-bg-main/50 text-[10px] font-bold text-text-muted uppercase tracking-widest last:rounded-tr-2xl">
+                                        {col.label}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {currentBlock.matrixRows?.map((row) => (
+                                    <tr key={row.code} className="border-b border-border-main/50 last:border-0">
+                                      <td className="p-4 text-sm font-bold text-text-main">{row.label}</td>
+                                      {currentBlock.matrixCols?.map((col) => {
+                                        const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
+                                                          (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
+                                        const colType = col.type || 'single_choice';
+
+                                        return (
+                                          <td key={col.value} className="p-4 text-center">
+                                            {colType === 'single_choice' && (
+                                              <button
+                                                onClick={() => {
+                                                  const currentMatrix = responses[currentBlock.id] || {};
+                                                  const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                  
+                                                  // Clear other single_choice columns in this row
+                                                  currentBlock.matrixCols?.forEach(c => {
+                                                    if ((c.type || 'single_choice') === 'single_choice') {
+                                                      delete currentRowData[c.value];
+                                                    }
+                                                  });
+                                                  
+                                                  currentRowData[col.value] = true;
+
+                                                  setResponses({ 
+                                                    ...responses, 
+                                                    [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                  });
+                                                }}
+                                                className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
+                                                  cellValue === true
+                                                    ? 'border-primary bg-primary'
+                                                    : 'border-border-main hover:border-primary/50'
+                                                }`}
+                                                style={{ 
+                                                  borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                                  backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                                } as any}
+                                              >
+                                                {cellValue === true && <div className="w-2 h-2 bg-white rounded-full" />}
+                                              </button>
+                                            )}
+                                            {colType === 'multi_choice' && (
+                                              <button
+                                                onClick={() => {
+                                                  const currentMatrix = responses[currentBlock.id] || {};
+                                                  const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                  
+                                                  if (currentRowData[col.value]) {
+                                                    delete currentRowData[col.value];
+                                                  } else {
+                                                    currentRowData[col.value] = true;
+                                                  }
+
+                                                  setResponses({ 
+                                                    ...responses, 
+                                                    [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                  });
+                                                }}
+                                                className={`w-6 h-6 rounded border-2 mx-auto transition-all flex items-center justify-center ${
+                                                  cellValue === true
+                                                    ? 'border-primary bg-primary'
+                                                    : 'border-border-main hover:border-primary/50'
+                                                }`}
+                                                style={{ 
+                                                  borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                                  backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                                } as any}
+                                              >
+                                                {cellValue === true && <CheckCircle2 size={14} className="text-white" />}
+                                              </button>
+                                            )}
+                                            {colType === 'text' && (
+                                              <input
+                                                type="text"
+                                                value={cellValue as string || ''}
+                                                onChange={(e) => {
+                                                  const currentMatrix = responses[currentBlock.id] || {};
+                                                  const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                  currentRowData[col.value] = e.target.value;
+                                                  setResponses({ 
+                                                    ...responses, 
+                                                    [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                  });
+                                                }}
+                                                className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                                placeholder="Nhập..."
+                                              />
+                                            )}
+                                            {colType === 'number' && (
+                                              <input
+                                                type="number"
+                                                value={cellValue as string || ''}
+                                                onChange={(e) => {
+                                                  const currentMatrix = responses[currentBlock.id] || {};
+                                                  const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                  currentRowData[col.value] = e.target.value;
+                                                  setResponses({ 
+                                                    ...responses, 
+                                                    [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                  });
+                                                }}
+                                                className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                                placeholder="0"
+                                              />
+                                            )}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
                           </div>
                         )}
 

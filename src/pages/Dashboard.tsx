@@ -2,6 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
+import { useSettingsStore } from '../stores/settingsStore';
 import { 
   FileText, 
   Users, 
@@ -11,7 +12,8 @@ import {
   MoreVertical,
   ExternalLink,
   BarChart3,
-  Plus
+  Plus,
+  Database
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -19,6 +21,7 @@ import { vi } from 'date-fns/locale';
 
 const Dashboard: React.FC = () => {
   const { surveys: rawSurveys } = useAppStore();
+  const { sheetUrl } = useSettingsStore();
   const surveys = Array.isArray(rawSurveys) ? rawSurveys : [];
 
   const stats = [
@@ -107,9 +110,20 @@ const Dashboard: React.FC = () => {
                         {format(new Date(survey.updatedAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
                       </td>
                       <td className="py-4 text-right">
-                        <Link to={`/admin/builder/${survey.id}`} className="p-2 hover:bg-white rounded-lg inline-block transition-all">
-                          <MoreVertical size={16} className="text-text-muted" />
-                        </Link>
+                        <div className="flex items-center justify-end gap-1">
+                          <a 
+                            href={survey.fileId ? `https://docs.google.com/spreadsheets/d/${survey.fileId}/edit` : (sheetUrl || 'https://docs.google.com/spreadsheets')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="p-2 hover:bg-green-50 hover:text-green-600 rounded-lg inline-block transition-all text-text-muted"
+                            title="Mở Google Sheet"
+                          >
+                            <Database size={16} />
+                          </a>
+                          <Link to={`/admin/builder/${survey.id}`} className="p-2 hover:bg-white rounded-lg inline-block transition-all">
+                            <MoreVertical size={16} className="text-text-muted hover:text-primary" />
+                          </Link>
+                        </div>
                       </td>
                     </tr>
                   ))

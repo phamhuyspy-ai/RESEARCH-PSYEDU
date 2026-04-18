@@ -5,6 +5,7 @@ import { AppSettings } from '../types';
 
 interface SettingsState extends AppSettings {
   gasUrl: string;
+  sheetUrl: string;
   language: 'vi' | 'en';
   hasHydrated: boolean;
   setHasHydrated: (state: boolean) => void;
@@ -100,6 +101,7 @@ export const useSettingsStore = create<SettingsState>()(
         { id: '1', name: 'Manager 1', email: 'manager@psyedu.vn', role: 'manager' }
       ],
       language: 'vi',
+      sheetUrl: 'https://docs.google.com/spreadsheets',
       gasUrl: import.meta.env.VITE_GAS_URL || 'https://script.google.com/macros/s/AKfycbxVkCxvaRQAArL4Jjv1ZO-A45i9a5gvN2jEaG9oujbsUenCi_coNISm7s35fF5E7zD2/exec',
       hasHydrated: false,
       setHasHydrated: (state) => set({ hasHydrated: state }),

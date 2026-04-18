@@ -110,6 +110,9 @@ export interface SurveyBlock {
   placeholder?: string;
   required?: boolean;
   visible?: boolean;
+  allowOther?: boolean;
+  layout?: 'vertical' | 'horizontal' | 'grid';
+  matrixLayout?: 'table' | 'linear';
   options?: { label: string; value: string; score?: number }[];
   matrixRows?: { label: string; code: string }[];
   matrixCols?: { label: string; value: string; score?: number; type?: 'single_choice' | 'multi_choice' | 'text' | 'number' }[];
@@ -135,6 +138,7 @@ export interface Survey {
   name: string;
   description: string;
   type: string;
+  fileId?: string;
   status: 'draft' | 'published';
   collectionStatus: 'open' | 'closed';
   blocks: SurveyBlock[];

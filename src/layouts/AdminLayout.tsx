@@ -96,7 +96,7 @@ const AdminLayout: React.FC = () => {
   ].filter(item => !item.roles || (user && item.roles.includes(user.role)));
 
   return (
-    <div className="min-h-screen bg-bg-main flex flex-col md:flex-row text-text-main">
+    <div className="h-[100dvh] bg-bg-main flex flex-col md:flex-row text-text-main overflow-hidden">
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-[240px] bg-sidebar text-white py-6">
         <div className="logo px-6 pb-8 flex items-center gap-2">

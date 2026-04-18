@@ -10,11 +10,13 @@ import {
   ArrowUp,
   ArrowDown
 } from 'lucide-react';
-import { SurveyBlock } from '../../types';
+import { SurveyBlock, ScoreGroup } from '../../types';
+import ConfigPanel from './ConfigPanel';
 
 interface CanvasProps {
   blocks: SurveyBlock[];
   activeBlockId: string | null;
+  scoreGroups?: ScoreGroup[];
   onSelectBlock: (id: string | null) => void;
   onRemoveBlock: (id: string) => void;
   onDuplicateBlock: (block: SurveyBlock) => void;
@@ -26,6 +28,7 @@ interface CanvasProps {
 const Canvas: React.FC<CanvasProps> = ({
   blocks,
   activeBlockId,
+  scoreGroups = [],
   onSelectBlock,
   onRemoveBlock,
   onDuplicateBlock,
@@ -186,7 +189,7 @@ const Canvas: React.FC<CanvasProps> = ({
               )}
 
               {block.type === 'text' && (
-                <div className="h-10 w-full bg-bg-main rounded-xl border border-border-main border-dashed flex items-center px-4 text-xs text-text-muted">
+                <div className="h-10 w-full bg-bg-main rounded-[24px] border border-border-main border-dashed flex items-center px-6 text-sm text-text-muted">
                   {block.placeholder || 'Người dùng nhập văn bản tại đây...'}
                 </div>
               )}

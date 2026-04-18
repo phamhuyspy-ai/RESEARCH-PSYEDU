@@ -44,7 +44,8 @@ const Settings: React.FC = () => {
     cta: { ...settings.cta },
     users: [...settings.users],
     language: settings.language,
-    gasUrl: settings.gasUrl
+    gasUrl: settings.gasUrl,
+    sheetUrl: settings.sheetUrl || 'https://docs.google.com/spreadsheets'
   });
   
   const [isSaving, setIsSaving] = useState(false);
@@ -814,6 +815,20 @@ const Settings: React.FC = () => {
             />
             <p className="mt-2 text-[11px] text-text-muted italic">
               * Required for authentication, schema syncing, and data storage.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-text-muted uppercase tracking-wider mb-1.5">Google Sheet URL</label>
+            <input
+              type="text"
+              value={formData.sheetUrl}
+              onChange={(e) => setFormData({ ...formData, sheetUrl: e.target.value })}
+              className="w-full px-3 py-2 border border-border-main rounded-lg text-sm font-mono focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              placeholder="https://docs.google.com/spreadsheets/d/..."
+            />
+            <p className="mt-2 text-[11px] text-text-muted italic">
+              * Link để xem nhanh dữ liệu tại danh sách khảo sát.
             </p>
           </div>
         </div>

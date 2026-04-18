@@ -26,6 +26,7 @@ import Toolbox from '../components/builder/Toolbox';
 import Canvas from '../components/builder/Canvas';
 import ConfigPanel from '../components/builder/ConfigPanel';
 import ResultConfigModal from '../components/builder/ResultConfigModal';
+import DraggableFloatingPanel from '../components/builder/DraggableFloatingPanel';
 
 const Builder: React.FC = () => {
   const { id } = useParams();
@@ -296,22 +297,31 @@ const Builder: React.FC = () => {
       <div className="flex gap-6 items-start relative">
         {activeTab === 'builder' ? (
           <>
-            {/* Left: Toolbox */}
-            <div className={`transition-all duration-300 ease-in-out ${
+            {/* Draggable Toolbox */}
+            <div className="hidden lg:block">
+              <DraggableFloatingPanel 
+                title="Công cụ" 
+                defaultPosition={{ x: 260, y: 100 }}
+              >
+                <Toolbox onAddBlock={handleAddBlock} />
+              </DraggableFloatingPanel>
+            </div>
+            
+            {/* Mobile Toolbox */}
+            <div className={`lg:hidden transition-all duration-300 ease-in-out ${
               isToolboxOpen ? 'w-64 opacity-100 translate-x-0' : 'w-0 opacity-0 -translate-x-full overflow-hidden'
-            } lg:relative absolute z-20 bg-bg-main lg:bg-transparent h-full`}>
+            } absolute z-20 bg-bg-main h-full flex-shrink-0`}>
               <div className="w-64">
                 <Toolbox onAddBlock={handleAddBlock} />
               </div>
             </div>
 
             {/* Center: Canvas */}
-            <div className={`flex-1 transition-all duration-300 ease-in-out ${
-              activeBlockId ? 'lg:mr-80' : ''
-            }`}>
+            <div className="flex-1 transition-all duration-300 ease-in-out w-full max-w-4xl mx-auto">
               <Canvas 
                 blocks={activeSurvey.blocks}
                 activeBlockId={activeBlockId}
+                scoreGroups={activeSurvey.scoreGroups}
                 onSelectBlock={setActiveBlockId}
                 onRemoveBlock={removeBlock}
                 onDuplicateBlock={handleDuplicateBlock}
@@ -320,16 +330,23 @@ const Builder: React.FC = () => {
                 onMoveBlockDown={moveBlockDown}
               />
             </div>
-
-            {/* Right: ConfigPanel */}
+            
+            {/* Draggable Config Panel (Desktop) */}
             {activeBlockId && (
-              <div className="w-80 absolute right-0 top-0 z-10 hidden lg:block animate-fade-in">
-                <ConfigPanel 
-                  block={activeBlock}
-                  scoreGroups={activeSurvey.scoreGroups}
-                  onUpdateBlock={updateBlock}
-                  onClose={() => setActiveBlockId(null)}
-                />
+              <div className="hidden lg:block">
+                <DraggableFloatingPanel 
+                  title="Cấu hình Block" 
+                  defaultPosition={{ x: Math.max(280, window.innerWidth - 420), y: 100 }}
+                  width="w-96"
+                  id={activeBlockId}
+                >
+                  <ConfigPanel 
+                    block={activeBlock}
+                    scoreGroups={activeSurvey.scoreGroups}
+                    onUpdateBlock={updateBlock}
+                    onClose={() => setActiveBlockId(null)}
+                  />
+                </DraggableFloatingPanel>
               </div>
             )}
             
