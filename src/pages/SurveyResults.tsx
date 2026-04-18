@@ -35,9 +35,9 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
 
   useEffect(() => {
     if (survey) {
-      document.title = `Kết quả: ${survey.name} - ${globalSettings.orgName || 'PsyEdu'}`;
+      document.title = `Kết quả: ${survey.name} - PsyEdu Research`;
     }
-  }, [survey, globalSettings.orgName]);
+  }, [survey]);
 
   const handleDownloadPDF = async () => {
     // We use native print to allow perfectly scaled, multi-page vector PDFs natively mapped to A4.

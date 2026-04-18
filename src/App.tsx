@@ -28,11 +28,9 @@ export default function App() {
   const { updateSettings, gasUrl, orgName } = useSettingsStore();
   const [isSyncing, setIsSyncing] = useState(true);
 
-  // Dynamic document title based on orgName
+  // Dynamic document title
   useEffect(() => {
-    if (orgName) {
-      document.title = `${orgName} - Nền tảng Khảo sát`;
-    }
+    document.title = "PsyEdu Research";
   }, [orgName]);
 
   useEffect(() => {

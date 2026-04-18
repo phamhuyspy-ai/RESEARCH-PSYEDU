@@ -75,12 +75,12 @@ const SurveyRunner: React.FC = () => {
         setError('Bảng hỏi này hiện đang đóng thu thập phản hồi.');
       } else {
         setSurvey(found);
-        document.title = `${found.name} - ${globalSettings.orgName || 'PsyEdu'}`;
+        document.title = `${found.name} - PsyEdu Research`;
       }
     } else {
       setError('Không tìm thấy bảng hỏi hoặc bảng hỏi chưa được xuất bản.');
     }
-  }, [code, surveys, globalSettings.orgName]);
+  }, [code, surveys]);
 
   const handleNext = () => {
     if (currentPageIndex === -1) {

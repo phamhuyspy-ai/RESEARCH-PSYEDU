@@ -89,7 +89,7 @@ export const exportToPDF = (
       body: data,
       startY: 30,
       theme: 'grid',
-      headStyles: { fillStyle: '#3b82f6', textColor: 255 },
+      headStyles: { fillColor: '#3b82f6', textColor: 255 },
       styles: { fontSize: 8, font: 'helvetica' }
     });
 
