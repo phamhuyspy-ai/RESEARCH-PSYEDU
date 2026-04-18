@@ -36,6 +36,26 @@ export interface CTASettings {
   showInEmail: boolean;
 }
 
+export interface LandingPageConfig {
+  hero: {
+    badge: string;
+    title: string;
+    description: string;
+    primaryButtonText: string;
+    primaryButtonLink: string;
+    secondaryButtonText: string;
+    secondaryButtonLink: string;
+  };
+  nav: {
+    links: { label: string; url: string }[];
+  };
+  footer: {
+    description: string;
+    columns: { title: string; links: { label: string; url: string }[] }[];
+    copyright: string;
+  };
+}
+
 export interface AppSettings {
   appName: string;
   orgName: string;
@@ -60,6 +80,7 @@ export interface AppSettings {
     requireConsent: boolean;
   };
   cta: CTASettings;
+  landingPage?: LandingPageConfig;
   users: User[];
 }
 

@@ -25,7 +25,6 @@ const Dashboard: React.FC = () => {
     { label: 'Tổng số bảng hỏi', value: surveys.length, icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
     { label: 'Đã xuất bản', value: surveys.filter(s => s.status === 'published').length, icon: Send, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Đang thu thập', value: surveys.filter(s => s.collectionStatus === 'open').length, icon: Clock, color: 'text-orange-600', bg: 'bg-orange-50' },
-    { label: 'Tổng phản hồi', value: '0', icon: Users, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
 
   const recentSurveys = [...surveys].sort((a, b) => 
@@ -35,7 +34,7 @@ const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-5">
         {stats.map((stat, index) => (
           <div key={index} className="bg-white p-6 rounded-2xl border border-border-main shadow-sm flex items-center gap-4">
             <div className={`w-12 h-12 ${stat.bg} ${stat.color} rounded-xl flex items-center justify-center`}>

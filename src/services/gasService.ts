@@ -10,7 +10,13 @@ interface GasResponse<T = any> {
 
 export const gasService = {
   async request<T = any>(action: string, payload: any = {}, retryCount = 1): Promise<GasResponse<T>> {
-    const gasUrl = useSettingsStore.getState().gasUrl;
+    let gasUrl = useSettingsStore.getState().gasUrl;
+    
+    // Hard override if LocalStorage cached the old developer link
+    const oldDummyUrl = 'https://script.google.com/macros/s/AKfycbxVkCxvaRQAArL4Jjv1ZO-A45i9a5gvN2jEaG9oujbsUenCi_coNISm7s35fF5E7zD2/exec';
+    if ((!gasUrl || gasUrl === oldDummyUrl) && import.meta.env.VITE_GAS_URL) {
+      gasUrl = import.meta.env.VITE_GAS_URL;
+    }
     
     if (!gasUrl) {
       return { success: false, message: 'GAS URL not configured' };

@@ -91,6 +91,7 @@ const AdminLayout: React.FC = () => {
     { label: 'Bảng hỏi', path: '/admin/surveys', icon: ClipboardList },
     { label: 'Kết quả', path: '/admin/responses', icon: FileText },
     { label: 'Tạo bảng hỏi', path: '/admin/builder', icon: PlusCircle },
+    { label: 'Giao diện Portal', path: '/admin/landing-builder', icon: Globe, roles: ['admin'] },
     { label: 'Cài đặt hệ thống', path: '/admin/settings', icon: SettingsIcon, roles: ['admin'] },
   ].filter(item => !item.roles || (user && item.roles.includes(user.role)));
 

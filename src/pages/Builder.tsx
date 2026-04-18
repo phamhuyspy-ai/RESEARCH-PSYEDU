@@ -233,6 +233,16 @@ const Builder: React.FC = () => {
 
   const activeBlock = activeSurvey.blocks.find(b => b.id === activeBlockId) || null;
 
+  const getPublicDomain = () => {
+    // If inside AI Studio or Sandbox, force the public Vercel domain so QR/Iframes work externally
+    if (window.location.hostname.includes('googleusercontent.com') || window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost')) {
+      return 'https://syedu.vercel.app';
+    }
+    return window.location.origin;
+  };
+
+  const surveyUrl = activeSurvey ? `${getPublicDomain()}/survey/${activeSurvey.code}` : '';
+
   return (
     <div className="max-w-[1400px] mx-auto space-y-6">
       <BuilderHeader 
@@ -467,12 +477,12 @@ const Builder: React.FC = () => {
                       <input
                         type="text"
                         readOnly
-                        value={`${window.location.origin}/survey/${activeSurvey.code}`}
+                        value={surveyUrl}
                         className="flex-1 px-2 py-1.5 bg-bg-main border border-border-main rounded text-xs text-text-muted"
                       />
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(`${window.location.origin}/survey/${activeSurvey.code}`);
+                          navigator.clipboard.writeText(surveyUrl);
                           setSaveMessage({ text: 'Đã sao chép link', type: 'success' });
                           setTimeout(() => setSaveMessage(null), 3000);
                         }}
@@ -489,12 +499,12 @@ const Builder: React.FC = () => {
                     <div className="relative">
                       <textarea
                         readOnly
-                        value={`<iframe src="${window.location.origin}/s/${activeSurvey.id}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`}
+                        value={`<iframe src="${surveyUrl}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`}
                         className="w-full h-24 px-2 py-1.5 bg-bg-main border border-border-main rounded text-[10px] font-mono text-text-muted resize-none"
                       />
                       <button 
                         onClick={() => {
-                          navigator.clipboard.writeText(`<iframe src="${window.location.origin}/s/${activeSurvey.id}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`);
+                          navigator.clipboard.writeText(`<iframe src="${surveyUrl}?embed=true" width="100%" height="600px" frameborder="0" style="border:none;"></iframe>`);
                           setSaveMessage({ text: 'Đã sao chép mã nhúng', type: 'success' });
                           setTimeout(() => setSaveMessage(null), 3000);
                         }}
@@ -520,7 +530,7 @@ const Builder: React.FC = () => {
                   <div className="bg-white p-4 rounded-xl shadow-sm border border-border-main">
                     <QRCodeSVG 
                       id="builder-qr-code"
-                      value={`${window.location.origin}/survey/${activeSurvey.code}`} 
+                      value={surveyUrl} 
                       size={200}
                       level="H"
                       includeMargin={true}

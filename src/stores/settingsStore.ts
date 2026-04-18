@@ -57,6 +57,45 @@ export const useSettingsStore = create<SettingsState>()(
         showInPdf: true,
         showInEmail: true
       },
+      landingPage: {
+        hero: {
+          badge: 'Hệ thống lượng giá tâm lý & giáo dục',
+          title: 'Nền tảng khảo sát <span className="text-primary">chuyên sâu</span> cho nghiên cứu',
+          description: 'Cung cấp các công cụ đo lường chuẩn hóa, hỗ trợ thu thập dữ liệu và phân tích kết quả tự động cho các đơn vị giáo dục và tâm lý học.',
+          primaryButtonText: 'Bắt đầu khảo sát',
+          primaryButtonLink: '#surveys',
+          secondaryButtonText: 'Tìm hiểu thêm',
+          secondaryButtonLink: '#about'
+        },
+        nav: {
+          links: [
+            { label: 'Bảng hỏi', url: '#surveys' },
+            { label: 'Giới thiệu', url: '#about' }
+          ]
+        },
+        footer: {
+          description: 'Nền tảng cung cấp các công cụ lượng giá tâm lý và giáo dục chuyên sâu, hỗ trợ nghiên cứu và đánh giá chuẩn hóa.',
+          columns: [
+            {
+              title: 'Khám phá',
+              links: [
+                { label: 'Bảng hỏi', url: '#surveys' },
+                { label: 'Giới thiệu', url: '#about' },
+                { label: 'Hướng dẫn sử dụng', url: '#' }
+              ]
+            },
+            {
+              title: 'Chính sách',
+              links: [
+                { label: 'Bảo mật', url: '#' },
+                { label: 'Điều khoản sử dụng', url: '#' },
+                { label: 'Quyền riêng tư', url: '#' }
+              ]
+            }
+          ],
+          copyright: '© 2024 PSYEDU RESEARCH. Bản quyền thuộc về Viện Tâm lý Giáo dục.'
+        }
+      },
       users: [
         { id: '1', name: 'Manager 1', email: 'manager@psyedu.vn', role: 'manager' }
       ],
@@ -69,6 +108,14 @@ export const useSettingsStore = create<SettingsState>()(
     {
       name: 'settings-storage',
       storage: createJSONStorage(() => localStorage),
+      merge: (persistedState: any, currentState) => {
+        // Force override old dummy GAS URL with the new Env URL if user hasn't actively changed it to something else
+        const oldDummyUrl = 'https://script.google.com/macros/s/AKfycbxVkCxvaRQAArL4Jjv1ZO-A45i9a5gvN2jEaG9oujbsUenCi_coNISm7s35fF5E7zD2/exec';
+        if (persistedState?.gasUrl === oldDummyUrl && import.meta.env.VITE_GAS_URL) {
+          persistedState.gasUrl = import.meta.env.VITE_GAS_URL;
+        }
+        return { ...currentState, ...persistedState };
+      },
       onRehydrateStorage: (state) => {
         return () => state?.setHasHydrated(true);
       },

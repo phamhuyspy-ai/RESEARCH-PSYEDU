@@ -18,6 +18,7 @@ import AdminLayout from './layouts/AdminLayout';
 import Settings from './pages/Settings';
 import Surveys from './pages/Surveys';
 import SurveysResponses from './pages/SurveysResponses';
+import LandingBuilder from './pages/LandingBuilder';
 
 export default function App() {
   const authHydrated = useAuthStore((state) => state.hasHydrated);
@@ -102,6 +103,7 @@ export default function App() {
           <Route path="surveys" element={<Surveys />} />
           <Route path="responses" element={<SurveysResponses />} />
           <Route path="builder/:id?" element={<Builder />} />
+          <Route path="landing-builder" element={<LandingBuilder />} />
           <Route 
             path="settings" 
             element={

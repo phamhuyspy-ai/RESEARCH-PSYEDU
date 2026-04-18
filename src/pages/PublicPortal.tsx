@@ -18,9 +18,42 @@ import { Chatbot } from '../components/Chatbot';
 
 const PublicPortal: React.FC = () => {
   const { surveys } = useAppStore();
-  const { orgName, logoUrl } = useSettingsStore();
+  const { orgName, logoUrl, landingPage, socialLinks } = useSettingsStore();
 
   const displaySurveys = surveys;
+
+  // Fallback defaults in case older configurations exist
+  const heroBadge = landingPage?.hero?.badge || 'Hệ thống lượng giá tâm lý & giáo dục';
+  const heroTitle = landingPage?.hero?.title || 'Nền tảng khảo sát <span className="text-primary">chuyên sâu</span> cho nghiên cứu';
+  const heroDesc = landingPage?.hero?.description || 'Cung cấp các công cụ đo lường chuẩn hóa, hỗ trợ thu thập dữ liệu và phân tích kết quả tự động cho các đơn vị giáo dục và tâm lý học.';
+  const btn1Text = landingPage?.hero?.primaryButtonText || 'Bắt đầu khảo sát';
+  const btn1Link = landingPage?.hero?.primaryButtonLink || '#surveys';
+  const btn2Text = landingPage?.hero?.secondaryButtonText || 'Tìm hiểu thêm';
+  const btn2Link = landingPage?.hero?.secondaryButtonLink || '#about';
+
+  const navLinks = landingPage?.nav?.links || [
+    { label: 'Bảng hỏi', url: '#surveys' },
+    { label: 'Giới thiệu', url: '#about' }
+  ];
+
+  const footerDesc = landingPage?.footer?.description || 'Nền tảng cung cấp các công cụ lượng giá tâm lý và giáo dục chuyên sâu, hỗ trợ nghiên cứu và đánh giá chuẩn hóa.';
+  const footerCopyright = landingPage?.footer?.copyright || `© ${new Date().getFullYear()} ${orgName}. Bản quyền thuộc về Viện Tâm lý Giáo dục.`;
+  const footerCols = landingPage?.footer?.columns || [
+    {
+      title: 'Khám phá',
+      links: [
+        { label: 'Bảng hỏi', url: '#surveys' },
+        { label: 'Quản trị', url: '/admin/login' }
+      ]
+    },
+    {
+      title: 'Hỗ trợ',
+      links: [
+        { label: 'Hướng dẫn sử dụng', url: '#' },
+        { label: 'Chính sách bảo mật', url: '#' }
+      ]
+    }
+  ];
 
   const getPublicFormStatus = (survey: any) => {
     if (survey.status !== 'published') return { label: 'Đang phát triển', style: 'bg-gray-100 text-gray-600 border-gray-200', active: false };
@@ -45,8 +78,9 @@ const PublicPortal: React.FC = () => {
               <span className="text-lg font-bold tracking-tight">{orgName}</span>
             </div>
             <div className="hidden md:flex items-center gap-8">
-              <a href="#surveys" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">Bảng hỏi</a>
-              <a href="#about" className="text-sm font-medium text-text-muted hover:text-primary transition-colors">Giới thiệu</a>
+              {navLinks.map((link, idx) => (
+                <a key={idx} href={link.url} className="text-sm font-medium text-text-muted hover:text-primary transition-colors">{link.label}</a>
+              ))}
               <Link to="/admin/login" className="btn-secondary">Admin Portal</Link>
             </div>
           </div>
@@ -57,26 +91,30 @@ const PublicPortal: React.FC = () => {
       <section className="relative py-20 overflow-hidden bg-white border-b border-border-main">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold mb-6 border border-blue-100">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-              </span>
-              Hệ thống lượng giá tâm lý & giáo dục
-            </div>
-            <h1 className="text-4xl md:text-5xl font-extrabold text-text-main mb-6 tracking-tight leading-tight">
-              Nền tảng khảo sát <span className="text-primary">chuyên sâu</span> cho nghiên cứu
-            </h1>
+            {heroBadge && (
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold mb-6 border border-blue-100">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                </span>
+                {heroBadge}
+              </div>
+            )}
+            <h1 className="text-4xl md:text-5xl font-extrabold text-text-main mb-6 tracking-tight leading-tight" dangerouslySetInnerHTML={{ __html: heroTitle }} />
             <p className="text-lg text-text-muted mb-10 leading-relaxed">
-              Cung cấp các công cụ đo lường chuẩn hóa, hỗ trợ thu thập dữ liệu và phân tích kết quả tự động cho các đơn vị giáo dục và tâm lý học.
+              {heroDesc}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a href="#surveys" className="btn-primary px-8 py-3 text-base w-full sm:w-auto">
-                Bắt đầu khảo sát
-              </a>
-              <button className="btn-secondary px-8 py-3 text-base w-full sm:w-auto">
-                Tìm hiểu thêm
-              </button>
+              {btn1Text && (
+                <a href={btn1Link} className="btn-primary px-8 py-3 text-base w-full sm:w-auto">
+                  {btn1Text}
+                </a>
+              )}
+              {btn2Text && (
+                <a href={btn2Link} className="btn-secondary px-8 py-3 text-base w-full sm:w-auto">
+                  {btn2Text}
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -161,29 +199,23 @@ const PublicPortal: React.FC = () => {
                 <span className="text-lg font-bold tracking-tight">{orgName}</span>
               </div>
               <p className="text-sm text-text-muted leading-relaxed">
-                Nền tảng chuyên nghiệp cho các hoạt động nghiên cứu và lượng giá trong lĩnh vực tâm lý giáo dục.
+                {footerDesc}
               </p>
             </div>
-            <div>
-              <h4 className="font-bold mb-4 text-sm uppercase tracking-wider">Liên kết</h4>
-              <ul className="space-y-2 text-sm text-text-muted">
-                <li><a href="#" className="hover:text-primary transition-colors">Trang chủ</a></li>
-                <li><a href="#surveys" className="hover:text-primary transition-colors">Bảng hỏi</a></li>
-                <li><a href="/admin/login" className="hover:text-primary transition-colors">Quản trị</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-bold mb-4 text-sm uppercase tracking-wider">Hỗ trợ</h4>
-              <ul className="space-y-2 text-sm text-text-muted">
-                <li><a href="#" className="hover:text-primary transition-colors">Hướng dẫn sử dụng</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Chính sách bảo mật</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Liên hệ</a></li>
-              </ul>
-            </div>
+            {footerCols.map((col, idx) => (
+              <div key={idx}>
+                <h4 className="font-bold mb-4 text-sm uppercase tracking-wider">{col.title}</h4>
+                <ul className="space-y-2 text-sm text-text-muted">
+                  {col.links.map((link, lIdx) => (
+                    <li key={lIdx}><a href={link.url} className="hover:text-primary transition-colors">{link.label}</a></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
           </div>
           <div className="pt-8 border-t border-border-main flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-xs text-text-muted">
-              © {new Date().getFullYear()} {orgName}. All rights reserved.
+              {footerCopyright}
             </p>
             <div className="flex items-center gap-6">
               <a href="#" className="text-text-muted hover:text-primary transition-colors"><Facebook size={18} /></a>

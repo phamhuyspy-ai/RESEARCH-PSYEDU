@@ -98,7 +98,16 @@ const Surveys: React.FC = () => {
   };
 
   const selectedSurvey = Array.isArray(surveys) ? surveys.find(s => s.id === selectedSurveyForShare) : undefined;
-  const surveyUrl = selectedSurvey ? `${window.location.origin}/survey/${selectedSurvey.code}` : '';
+  
+  const getPublicDomain = () => {
+    // If inside AI Studio or Sandbox, force the public Vercel domain so QR/Iframes work externally
+    if (window.location.hostname.includes('googleusercontent.com') || window.location.hostname.includes('run.app') || window.location.hostname.includes('localhost')) {
+      return 'https://syedu.vercel.app';
+    }
+    return window.location.origin;
+  };
+  
+  const surveyUrl = selectedSurvey ? `${getPublicDomain()}/survey/${selectedSurvey.code}` : '';
 
   return (
     <div className="flex gap-6 h-[calc(100vh-8rem)]">
