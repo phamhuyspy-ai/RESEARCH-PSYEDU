@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Submission, Survey } from '../types';
-import html2canvas from 'html2canvas';
+import * as htmlToImage from 'html-to-image';
 import { jsPDF } from 'jspdf';
 import { 
   CheckCircle2, 
@@ -17,7 +17,6 @@ import {
   Info,
   Loader2
 } from 'lucide-react';
-import React, { useState, useRef } from 'react';
 
 interface SurveyResultsProps {
   adminView?: boolean;
@@ -39,19 +38,21 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
     setIsExportingPDF(true);
     try {
       const element = pdfRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: false,
-        logging: true,
-        imageTimeout: 5000,
-        backgroundColor: '#ffffff'
+      
+      // Use html-to-image because it handles modern CSS (oklch/oklab) much better than html2canvas
+      const imgData = await htmlToImage.toJpeg(element, {
+        quality: 0.95,
+        backgroundColor: '#ffffff',
+        pixelRatio: 2,
+        style: {
+          borderRadius: '0' // Temporary reset for better PDF clipping if needed
+        }
       });
       
-      const imgData = canvas.toDataURL('image/jpeg', 1.0);
       const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
       
       if (pdfHeight > pdf.internal.pageSize.getHeight()) {
           let heightLeft = pdfHeight;
@@ -69,10 +70,10 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
       }
       
-      pdf.save(`Ket_qua_${survey.name || 'KhaoSat'}_${new Date().getTime()}.pdf`);
+      pdf.save(`Bao_cao_${survey.name || 'KhaoSat'}_${new Date().getTime()}.pdf`);
     } catch (error: any) {
-      console.warn('Lỗi khi tải PDF bằng html2canvas, chuyển sang in mặc định:', error);
-      // Silently fallback to window print when canvas parsing fails (e.g., due to oklab colors)
+      console.warn('Lỗi khi tải PDF bằng html-to-image, chuyển sang in mặc định:', error);
+      // Fallback to window print
       window.print();
     } finally {
       setIsExportingPDF(false);
@@ -155,6 +156,13 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
           )}
 
           <div className="flex flex-wrap justify-center gap-4 pt-6" data-html2canvas-ignore="true">
+            <button 
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-8 py-4 bg-white border border-border-main text-text-muted rounded-2xl font-bold hover:bg-bg-main hover:text-primary hover:border-primary/30 transition-all group"
+            >
+              <Home size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+              Trang chủ
+            </button>
             <button
               onClick={handleDownloadPDF}
               disabled={isExportingPDF}
@@ -286,16 +294,6 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
               </div>
             )})}
           </div>
-        </div>
-
-        <div className="flex justify-center pt-8">
-          <button 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 text-text-muted font-bold hover:text-primary transition-all group"
-          >
-            <Home size={20} className="group-hover:-translate-y-0.5 transition-transform" />
-            Về trang chủ
-          </button>
         </div>
       </div>
     </div>
