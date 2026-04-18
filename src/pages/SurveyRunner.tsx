@@ -69,13 +69,17 @@ const SurveyRunner: React.FC = () => {
   }, [survey]);
 
   useEffect(() => {
-    const found = surveys.find(s => s.code === code && s.status === 'published');
+    const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
+    
+    // In preview mode, load the published or draft version
+    const found = surveys.find(s => s.code === code && (isPreview || s.status === 'published'));
+    
     if (found) {
-      if (found.collectionStatus === 'closed') {
+      if (!isPreview && found.collectionStatus === 'closed') {
         setError('Bảng hỏi này hiện đang đóng thu thập phản hồi.');
       } else {
         setSurvey(found);
-        document.title = `${found.name} - PsyEdu Research`;
+        document.title = isPreview ? `[Xem trước] ${found.name}` : `${found.name} - PsyEdu Research`;
       }
     } else {
       setError('Không tìm thấy bảng hỏi hoặc bảng hỏi chưa được xuất bản.');
@@ -264,6 +268,13 @@ const SurveyRunner: React.FC = () => {
     };
 
     try {
+      const isPreview = new URLSearchParams(window.location.search).get('preview') === 'true';
+      if (isPreview) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        navigate(`/results/${submission.submission_id}`, { state: { submission: { ...submission, responses }, survey } });
+        return;
+      }
+
       const response = await gasService.submitResponse({ surveyId: survey.id, surveyCode: survey.code, submission });
       if (response.success) {
         // Pass original responses for the results page UI

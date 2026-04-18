@@ -27,6 +27,7 @@ import Canvas from '../components/builder/Canvas';
 import ConfigPanel from '../components/builder/ConfigPanel';
 import ResultConfigModal from '../components/builder/ResultConfigModal';
 import DraggableFloatingPanel from '../components/builder/DraggableFloatingPanel';
+import LivePreview from '../components/builder/LivePreview';
 
 const Builder: React.FC = () => {
   const { id } = useParams();
@@ -317,7 +318,7 @@ const Builder: React.FC = () => {
             </div>
 
             {/* Center: Canvas */}
-            <div className="flex-1 transition-all duration-300 ease-in-out w-full max-w-4xl mx-auto">
+            <div className="flex-1 transition-all duration-300 ease-in-out w-full max-w-2xl mx-auto">
               <Canvas 
                 blocks={activeSurvey.blocks}
                 activeBlockId={activeBlockId}
@@ -329,6 +330,11 @@ const Builder: React.FC = () => {
                 onMoveBlockUp={moveBlockUp}
                 onMoveBlockDown={moveBlockDown}
               />
+            </div>
+
+            {/* Right: Preview Pane */}
+            <div className="hidden xl:block w-[375px] flex-shrink-0">
+              <LivePreview />
             </div>
             
             {/* Draggable Config Panel (Desktop) */}

@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { GripHorizontal } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { GripHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
 
 interface DraggableFloatingPanelProps {
   title: string;
@@ -18,13 +18,14 @@ const DraggableFloatingPanel: React.FC<DraggableFloatingPanelProps> = ({
 }) => {
   const [pos, setPos] = useState(defaultPosition);
   const [isDragging, setIsDragging] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
   const dragRef = useRef<{ startX: number, startY: number, initialX: number, initialY: number }>({ startX: 0, startY: 0, initialX: 0, initialY: 0 });
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     setIsDragging(true);
     // Ignore if clicking on a button or interactive element inside the header
-    if ((e.target as HTMLElement).tagName === 'BUTTON') return;
+    if ((e.target as HTMLElement).tagName === 'BUTTON' || (e.target as HTMLElement).closest('button')) return;
     
     dragRef.current = {
       startX: e.clientX,
@@ -65,11 +66,25 @@ const DraggableFloatingPanel: React.FC<DraggableFloatingPanelProps> = ({
         onPointerCancel={handlePointerUp}
       >
         <span className="text-[10px] font-bold uppercase tracking-widest text-text-muted">{title}</span>
-        <GripHorizontal size={14} className="text-text-muted opacity-50" />
+        <div className="flex items-center gap-2">
+          <GripHorizontal size={14} className="text-text-muted opacity-50" />
+          <button 
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsCollapsed(!isCollapsed);
+            }}
+            className="p-1 hover:bg-gray-200 rounded text-text-muted transition-colors pointer-events-auto"
+          >
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+        </div>
       </div>
-      <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
-        {children}
-      </div>
+      {!isCollapsed && (
+        <div className="overflow-y-auto overflow-x-hidden custom-scrollbar flex-1">
+          {children}
+        </div>
+      )}
     </div>
   );
 };
