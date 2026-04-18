@@ -103,7 +103,7 @@ export interface AlertRule {
 export interface SurveyBlock {
   id: string;
   code: string;
-  type: 'content' | 'contact' | 'single_choice' | 'multi_choice' | 'likert' | 'text' | 'matrix';
+  type: 'content' | 'contact' | 'single_choice' | 'multi_choice' | 'likert' | 'text' | 'matrix' | 'section';
   title: string;
   description?: string;
   helpText?: string;

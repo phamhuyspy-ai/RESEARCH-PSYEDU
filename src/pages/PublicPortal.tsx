@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
+import { motion } from 'motion/react';
 import { 
   Search, 
   ArrowRight, 
@@ -63,6 +64,21 @@ const PublicPortal: React.FC = () => {
 
   const activeCount = displaySurveys.filter(s => getPublicFormStatus(s).active).length;
 
+  const fadeUpVariant = {
+    hidden: { opacity: 0, y: 30 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+  };
+  
+  const staggerContainer = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-bg-main font-sans text-text-main">
       {/* Navigation */}
@@ -89,22 +105,27 @@ const PublicPortal: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden bg-white border-b border-border-main">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <motion.div 
+          initial="hidden"
+          animate="visible"
+          variants={staggerContainer}
+          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10"
+        >
           <div className="text-center max-w-3xl mx-auto">
             {heroBadge && (
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold mb-6 border border-blue-100">
+              <motion.div variants={fadeUpVariant} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-50 text-primary text-xs font-bold mb-6 border border-blue-100">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                 </span>
                 {heroBadge}
-              </div>
+              </motion.div>
             )}
-            <h1 className="text-4xl md:text-5xl font-extrabold text-text-main mb-6 tracking-tight leading-tight" dangerouslySetInnerHTML={{ __html: heroTitle }} />
-            <p className="text-lg text-text-muted mb-10 leading-relaxed">
+            <motion.h1 variants={fadeUpVariant} className="text-4xl md:text-5xl font-extrabold text-text-main mb-6 tracking-tight leading-tight" dangerouslySetInnerHTML={{ __html: heroTitle }} />
+            <motion.p variants={fadeUpVariant} className="text-lg text-text-muted mb-10 leading-relaxed">
               {heroDesc}
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            </motion.p>
+            <motion.div variants={fadeUpVariant} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               {btn1Text && (
                 <a href={btn1Link} className="btn-primary px-8 py-3 text-base w-full sm:w-auto">
                   {btn1Text}
@@ -115,74 +136,81 @@ const PublicPortal: React.FC = () => {
                   {btn2Text}
                 </a>
               )}
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Surveys Section */}
       <section id="surveys" className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight mb-2">Danh sách bảng hỏi</h2>
-            <p className="text-text-muted">Chọn một bảng hỏi bên dưới để bắt đầu quá trình lượng giá.</p>
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.2 }}
+          variants={staggerContainer}
+        >
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
+            <motion.div variants={fadeUpVariant}>
+              <h2 className="text-3xl font-bold tracking-tight mb-2">Danh sách bảng hỏi</h2>
+              <p className="text-text-muted">Chọn một bảng hỏi bên dưới để bắt đầu quá trình lượng giá.</p>
+            </motion.div>
+            <motion.div variants={fadeUpVariant} className="flex items-center gap-2 text-sm font-medium text-text-muted">
+              <div className="w-2 h-2 rounded-full bg-success-main"></div>
+              {activeCount} bảng hỏi đang mở
+            </motion.div>
           </div>
-          <div className="flex items-center gap-2 text-sm font-medium text-text-muted">
-            <div className="w-2 h-2 rounded-full bg-success-main"></div>
-            {activeCount} bảng hỏi đang mở
-          </div>
-        </div>
 
-        {displaySurveys.length === 0 ? (
-          <div className="bg-white border border-border-main rounded-2xl p-16 text-center shadow-sm">
-            <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center mx-auto mb-4">
-              <ClipboardList className="text-text-muted" size={32} />
-            </div>
-            <h3 className="text-lg font-bold mb-2">Hiện chưa có bảng hỏi nào</h3>
-            <p className="text-text-muted max-w-md mx-auto">Hệ thống đang được cập nhật. Vui lòng quay lại sau hoặc liên hệ quản trị viên.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {displaySurveys.map((survey) => {
-              const status = getPublicFormStatus(survey);
-              return (
-                <div key={survey.id} className="group bg-white border border-border-main rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
-                  <div className="p-8 flex-1">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                        {survey.type === 'evaluation' ? 'Lượng giá' : 'Khảo sát'}
-                      </span>
-                      <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border ${status.style}`}>
-                        {status.label}
-                      </span>
+          {displaySurveys.length === 0 ? (
+            <motion.div variants={fadeUpVariant} className="bg-white border border-border-main rounded-2xl p-16 text-center shadow-sm">
+              <div className="w-16 h-16 bg-bg-main rounded-full flex items-center justify-center mx-auto mb-4">
+                <ClipboardList className="text-text-muted" size={32} />
+              </div>
+              <h3 className="text-lg font-bold mb-2">Hiện chưa có bảng hỏi nào</h3>
+              <p className="text-text-muted max-w-md mx-auto">Hệ thống đang được cập nhật. Vui lòng quay lại sau hoặc liên hệ quản trị viên.</p>
+            </motion.div>
+          ) : (
+            <motion.div variants={staggerContainer} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {displaySurveys.map((survey) => {
+                const status = getPublicFormStatus(survey);
+                return (
+                  <motion.div variants={fadeUpVariant} key={survey.id} className="group bg-white border border-border-main rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col">
+                    <div className="p-8 flex-1">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest bg-blue-50 px-2 py-1 rounded border border-blue-100">
+                          {survey.type === 'evaluation' ? 'Lượng giá' : 'Khảo sát'}
+                        </span>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded border ${status.style}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
+                        {survey.name}
+                      </h3>
+                      <p className="text-sm text-text-muted line-clamp-3 leading-relaxed">
+                        {survey.description || 'Không có mô tả cho bảng hỏi này.'}
+                      </p>
                     </div>
-                    <h3 className="text-xl font-bold mb-3 group-hover:text-primary transition-colors leading-tight">
-                      {survey.name}
-                    </h3>
-                    <p className="text-sm text-text-muted line-clamp-3 leading-relaxed">
-                      {survey.description || 'Không có mô tả cho bảng hỏi này.'}
-                    </p>
-                  </div>
-                  <div className="px-8 py-6 bg-bg-main border-t border-border-main">
-                    {status.active ? (
-                      <Link
-                        to={`/survey/${survey.code}`}
-                        className="w-full btn-primary"
-                      >
-                        Bắt đầu ngay
-                        <ArrowRight size={16} className="ml-2" />
-                      </Link>
-                    ) : (
-                      <button className="w-full btn-secondary cursor-not-allowed text-gray-500 opacity-60" disabled>
-                        Chưa khả dụng
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    <div className="px-8 py-6 bg-bg-main border-t border-border-main">
+                      {status.active ? (
+                        <Link
+                          to={`/survey/${survey.code}`}
+                          className="w-full btn-primary"
+                        >
+                          Bắt đầu ngay
+                          <ArrowRight size={16} className="ml-2" />
+                        </Link>
+                      ) : (
+                        <button className="w-full btn-secondary cursor-not-allowed text-gray-500 opacity-60" disabled>
+                          Chưa khả dụng
+                        </button>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+          )}
+        </motion.div>
       </section>
 
       {/* Footer */}
@@ -192,7 +220,7 @@ const PublicPortal: React.FC = () => {
             <div className="col-span-1 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
                 {logoUrl ? (
-                  <img src={logoUrl} alt="Logo" className="h-8 max-w-[120px] object-contain grayscale opacity-70" referrerPolicy="no-referrer" />
+                  <img src={logoUrl} alt="Logo" className="h-8 max-w-[120px] object-contain" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">P</div>
                 )}

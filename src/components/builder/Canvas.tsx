@@ -125,6 +125,12 @@ const Canvas: React.FC<CanvasProps> = ({
 
             {/* Block Specific Preview */}
             <div className="mt-4 pt-4 border-t border-border-main/50">
+              {block.type === 'section' && (
+                <div className="text-sm font-bold text-text-muted italic bg-primary/5 p-3 rounded-xl border border-primary/20 text-center">
+                  -- Ngắt trang / Bắt đầu phần mới --
+                </div>
+              )}
+
               {block.type === 'content' && (
                 <div className="text-sm text-text-muted italic bg-bg-main p-3 rounded-xl">
                   Nội dung hiển thị tĩnh cho người dùng.

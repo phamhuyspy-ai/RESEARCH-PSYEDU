@@ -25,12 +25,12 @@ export const Chatbot: React.FC = () => {
     scrollToBottom();
   }, [messages, isOpen]);
 
-  // Only render if enabled and API key is present
-  if (!aiConfig.enabled || !aiConfig.apiKey) {
+  // Only render if enabled
+  if (!aiConfig.enabled) {
     return null;
   }
 
-  const ai = aiConfig.provider === 'gemini' ? new GoogleGenAI({ apiKey: aiConfig.apiKey }) : null;
+  const ai = (aiConfig.provider === 'gemini' && aiConfig.apiKey) ? new GoogleGenAI({ apiKey: aiConfig.apiKey }) : null;
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -46,6 +46,10 @@ export const Chatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
+      if (!aiConfig.apiKey) {
+        throw new Error('Missing API Key');
+      }
+
       let responseText = '';
 
       if (aiConfig.provider === 'openai') {
@@ -111,7 +115,7 @@ export const Chatbot: React.FC = () => {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'model',
-        text: 'Đã có lỗi xảy ra khi kết nối với AI. Vui lòng thử lại sau.',
+        text: 'Chuyên gia đang bảo trì và nâng cấp cập nhật.',
       };
       setMessages((prev) => [...prev, errorMessage]);
     } finally {

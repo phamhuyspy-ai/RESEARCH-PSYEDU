@@ -1,9 +1,8 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLocation, useParams, useNavigate } from 'react-router-dom';
 import { Submission, Survey } from '../types';
-import * as htmlToImage from 'html-to-image';
-import { jsPDF } from 'jspdf';
+import { useSettingsStore } from '../stores/settingsStore';
 import { 
   CheckCircle2, 
   Download, 
@@ -26,58 +25,30 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { submissionId } = useParams();
-  
+  const globalSettings = useSettingsStore();
+
   const [isExportingPDF, setIsExportingPDF] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   const submission = location.state?.submission as Submission;
   const survey = location.state?.survey as Survey;
 
-  const handleDownloadPDF = async () => {
-    if (!pdfRef.current) return;
-    setIsExportingPDF(true);
-    try {
-      const element = pdfRef.current;
-      
-      // Use html-to-image because it handles modern CSS (oklch/oklab) much better than html2canvas
-      const imgData = await htmlToImage.toJpeg(element, {
-        quality: 0.95,
-        backgroundColor: '#ffffff',
-        pixelRatio: 2,
-        style: {
-          borderRadius: '0' // Temporary reset for better PDF clipping if needed
-        }
-      });
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      const imgProps = pdf.getImageProperties(imgData);
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
-      if (pdfHeight > pdf.internal.pageSize.getHeight()) {
-          let heightLeft = pdfHeight;
-          let position = 0;
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-          heightLeft -= pdf.internal.pageSize.getHeight();
-          
-          while (heightLeft >= 0) {
-              position = heightLeft - pdfHeight;
-              pdf.addPage();
-              pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, pdfHeight);
-              heightLeft -= pdf.internal.pageSize.getHeight();
-          }
-      } else {
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-      }
-      
-      pdf.save(`Bao_cao_${survey.name || 'KhaoSat'}_${new Date().getTime()}.pdf`);
-    } catch (error: any) {
-      console.warn('Lỗi khi tải PDF bằng html-to-image, chuyển sang in mặc định:', error);
-      // Fallback to window print
-      window.print();
-    } finally {
-      setIsExportingPDF(false);
+  useEffect(() => {
+    if (survey) {
+      document.title = `Kết quả: ${survey.name} - ${globalSettings.orgName || 'PsyEdu'}`;
     }
+  }, [survey, globalSettings.orgName]);
+
+  const handleDownloadPDF = async () => {
+    // We use native print to allow perfectly scaled, multi-page vector PDFs natively mapped to A4.
+    // CSS @media print handles the page breaks internally (page-break-inside).
+    setIsExportingPDF(true);
+    
+    // Slight delay to allow UI to visually process the state if needed
+    setTimeout(() => {
+       window.print();
+       setIsExportingPDF(false);
+    }, 500);
   };
 
   if (!submission || !survey) {
@@ -95,11 +66,11 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
   const branding = survey.branding || { primaryColor: '#3b82f6', backgroundColor: '#f8fafc' };
 
   return (
-    <div className="min-h-screen py-12 px-4 font-sans" style={{ backgroundColor: branding.backgroundColor }}>
-      <div className="max-w-3xl mx-auto space-y-8" ref={pdfRef}>
+    <div className="min-h-screen py-12 px-4 font-sans print:py-0 print:bg-white" style={{ backgroundColor: branding.backgroundColor }}>
+      <div className="max-w-3xl mx-auto space-y-8 print:space-y-4" ref={pdfRef}>
         {/* Main Success Card */}
-        <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main text-center space-y-8 animate-in fade-in zoom-in-95 duration-500">
-          <div className="inline-flex items-center justify-center h-24 w-24 rounded-full animate-bounce" style={{ backgroundColor: branding.primaryColor + '15', color: branding.primaryColor }}>
+        <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main text-center space-y-8 animate-in fade-in zoom-in-95 duration-500 print:shadow-none print:border-none print:p-0 print:space-y-4">
+          <div className="inline-flex items-center justify-center h-24 w-24 rounded-full animate-bounce print:animate-none" style={{ backgroundColor: branding.primaryColor + '15', color: branding.primaryColor }}>
             <CheckCircle2 size={56} />
           </div>
           
@@ -155,7 +126,7 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
             </div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-4 pt-6" data-html2canvas-ignore="true">
+          <div className="flex flex-wrap justify-center gap-4 pt-6 print:hidden">
             <button 
               onClick={() => navigate('/')}
               className="flex items-center gap-2 px-8 py-4 bg-white border border-border-main text-text-muted rounded-2xl font-bold hover:bg-bg-main hover:text-primary hover:border-primary/30 transition-all group"
@@ -193,7 +164,7 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
 
         {/* Score Groups Breakdown */}
         {survey.settings?.showResults && survey.scoreGroups && survey.scoreGroups.length > 0 && (
-          <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main animate-in fade-in slide-in-from-bottom-6 duration-700">
+          <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main animate-in fade-in slide-in-from-bottom-6 duration-700 print:break-inside-avoid">
             <h3 className="text-lg font-bold text-text-main mb-8 flex items-center gap-3">
               <BarChart3 size={24} style={{ color: branding.primaryColor }} />
               Phân tích chi tiết theo nhóm
@@ -235,12 +206,12 @@ const SurveyResults: React.FC<SurveyResultsProps> = ({ adminView }) => {
           </h3>
           
           <div className="space-y-8">
-            {survey.blocks.filter(b => b.type !== 'content' && b.type !== 'contact').map((block, idx) => {
+            {survey.blocks.filter(b => b.type !== 'content' && b.type !== 'contact' && b.type !== 'section').map((block, idx) => {
               // The responses passed from SurveyRunner are the unmapped ones (using block.id)
               // so we can still use block.id here to access the raw response.
               const response = submission.responses[block.id];
               return (
-              <div key={block.id} className="pb-8 border-b border-border-main/50 last:border-0 last:pb-0">
+              <div key={block.id} className="pb-8 border-b border-border-main/50 last:border-0 last:pb-0 print:break-inside-avoid print:py-4">
                 <p className="text-sm font-bold text-text-main mb-4 leading-relaxed">
                   <span className="text-text-muted mr-2">#{idx + 1}</span>
                   {block.title}

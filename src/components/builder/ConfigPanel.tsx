@@ -95,41 +95,43 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       </div>
 
       {/* Validation & Visibility */}
-      <div className="pt-4 border-t border-border-main space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 size={14} className="text-text-muted" />
-            <span className="text-xs font-medium text-text-main">Bắt buộc trả lời</span>
+      {block.type !== 'section' && block.type !== 'content' && (
+        <div className="pt-4 border-t border-border-main space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 size={14} className="text-text-muted" />
+              <span className="text-xs font-medium text-text-main">Bắt buộc trả lời</span>
+            </div>
+            <button
+              onClick={() => handleUpdate({ required: !block.required })}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                block.required ? 'bg-primary' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                block.required ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </button>
           </div>
-          <button
-            onClick={() => handleUpdate({ required: !block.required })}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              block.required ? 'bg-primary' : 'bg-gray-200'
-            }`}
-          >
-            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-              block.required ? 'translate-x-5' : 'translate-x-1'
-            }`} />
-          </button>
-        </div>
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {block.visible !== false ? <Eye size={14} className="text-text-muted" /> : <EyeOff size={14} className="text-text-muted" />}
-            <span className="text-xs font-medium text-text-main">Hiển thị</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {block.visible !== false ? <Eye size={14} className="text-text-muted" /> : <EyeOff size={14} className="text-text-muted" />}
+              <span className="text-xs font-medium text-text-main">Hiển thị</span>
+            </div>
+            <button
+              onClick={() => handleUpdate({ visible: block.visible === false ? true : false })}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                block.visible !== false ? 'bg-primary' : 'bg-gray-200'
+              }`}
+            >
+              <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                block.visible !== false ? 'translate-x-5' : 'translate-x-1'
+              }`} />
+            </button>
           </div>
-          <button
-            onClick={() => handleUpdate({ visible: block.visible === false ? true : false })}
-            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-              block.visible !== false ? 'bg-primary' : 'bg-gray-200'
-            }`}
-          >
-            <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-              block.visible !== false ? 'translate-x-5' : 'translate-x-1'
-            }`} />
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Contact Fields Configuration */}
       {block.type === 'contact' && (
@@ -346,7 +348,7 @@ const ConfigPanel: React.FC<ConfigPanelProps> = ({
       )}
 
       {/* Scoring Configuration */}
-      {block.type !== 'content' && block.type !== 'contact' && (
+      {block.type !== 'content' && block.type !== 'contact' && block.type !== 'section' && (
         <div className="pt-4 border-t border-border-main space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">

@@ -25,8 +25,15 @@ export default function App() {
   const appHydrated = useAppStore((state) => state.hasHydrated);
   const settingsHydrated = useSettingsStore((state) => state.hasHydrated);
   const { setSurveys } = useAppStore();
-  const { updateSettings, gasUrl } = useSettingsStore();
+  const { updateSettings, gasUrl, orgName } = useSettingsStore();
   const [isSyncing, setIsSyncing] = useState(true);
+
+  // Dynamic document title based on orgName
+  useEffect(() => {
+    if (orgName) {
+      document.title = `${orgName} - Nền tảng Khảo sát`;
+    }
+  }, [orgName]);
 
   useEffect(() => {
     const syncDb = async () => {

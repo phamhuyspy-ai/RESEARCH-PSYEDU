@@ -7,7 +7,8 @@ import {
   CheckSquare, 
   BarChart, 
   AlignLeft, 
-  Grid3X3 
+  Grid3X3,
+  SplitSquareHorizontal
 } from 'lucide-react';
 import { SurveyBlock } from '../../types';
 
@@ -18,6 +19,7 @@ interface ToolboxProps {
 const Toolbox: React.FC<ToolboxProps> = ({ onAddBlock }) => {
   const tools: { type: SurveyBlock['type']; label: string; icon: any; description: string }[] = [
     { type: 'content', label: 'Nội dung', icon: Type, description: 'Giới thiệu, hướng dẫn' },
+    { type: 'section', label: 'Phần mới (Section)', icon: SplitSquareHorizontal, description: 'Chia trang khảo sát' },
     { type: 'contact', label: 'Thông tin', icon: UserCircle, description: 'Họ tên, SĐT, Email...' },
     { type: 'single_choice', label: 'Trắc nghiệm', icon: ListTodo, description: 'Chọn 1 đáp án' },
     { type: 'multi_choice', label: 'Nhiều lựa chọn', icon: CheckSquare, description: 'Chọn nhiều đáp án' },

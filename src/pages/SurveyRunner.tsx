@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../stores/appStore';
 import { useSettingsStore } from '../stores/settingsStore';
 import { Survey, Submission, SurveyBlock } from '../types';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   ChevronRight, 
   ChevronLeft, 
@@ -22,11 +23,50 @@ const SurveyRunner: React.FC = () => {
   const globalSettings = useSettingsStore();
 
   const [survey, setSurvey] = useState<Survey | null>(null);
-  const [currentBlockIndex, setCurrentBlockIndex] = useState(-1); // -1 for intro/contact
+  const [currentPageIndex, setCurrentPageIndex] = useState(-1); // -1 for intro/contact
   const [responses, setResponses] = useState<Record<string, any>>({});
   const [contactInfo, setContactInfo] = useState({ name: '', email: '', phone: '', org: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  const mainRef = useRef<HTMLElement>(null);
+
+  const pages = React.useMemo(() => {
+    if (!survey) return [];
+    const _pages: SurveyBlock[][] = [];
+    let _currentPage: SurveyBlock[] = [];
+    
+    survey.blocks.forEach(block => {
+      if (block.type === 'contact') return; // Handled separately
+      
+      if (block.type === 'section') {
+        if (_currentPage.length > 0) {
+          _pages.push(_currentPage);
+        }
+        _currentPage = [block];
+      } else if (block.type === 'matrix') {
+        if (_currentPage.length === 1 && _currentPage[0].type === 'section') {
+          _currentPage.push(block);
+          _pages.push(_currentPage);
+          _currentPage = [];
+        } else {
+          if (_currentPage.length > 0) {
+            _pages.push(_currentPage);
+          }
+          _pages.push([block]);
+          _currentPage = [];
+        }
+      } else {
+        _currentPage.push(block);
+      }
+    });
+    
+    if (_currentPage.length > 0) {
+      _pages.push(_currentPage);
+    }
+    
+    return _pages;
+  }, [survey]);
 
   useEffect(() => {
     const found = surveys.find(s => s.code === code && s.status === 'published');
@@ -35,14 +75,15 @@ const SurveyRunner: React.FC = () => {
         setError('Bảng hỏi này hiện đang đóng thu thập phản hồi.');
       } else {
         setSurvey(found);
+        document.title = `${found.name} - ${globalSettings.orgName || 'PsyEdu'}`;
       }
     } else {
       setError('Không tìm thấy bảng hỏi hoặc bảng hỏi chưa được xuất bản.');
     }
-  }, [code, surveys]);
+  }, [code, surveys, globalSettings.orgName]);
 
   const handleNext = () => {
-    if (currentBlockIndex === -1) {
+    if (currentPageIndex === -1) {
       const contactBlock = survey?.blocks.find(b => b.type === 'contact');
       const fields = contactBlock?.contactFields || { name: true, email: true, phone: true, org: true };
       
@@ -51,17 +92,37 @@ const SurveyRunner: React.FC = () => {
         return;
       }
     } else {
-      const currentBlock = survey?.blocks[currentBlockIndex];
-      if (currentBlock?.required && !responses[currentBlock.id]) {
-        alert('Vui lòng hoàn thành câu hỏi này trước khi tiếp tục.');
+      const currentBlocks = pages[currentPageIndex];
+      const hasUnanswered = currentBlocks?.some(b => {
+        if (!b.required || b.type === 'content' || b.type === 'section') return false;
+        const ans = responses[b.id];
+        if (ans === undefined || ans === null) return true;
+        if (typeof ans === 'string' && ans.trim() === '') return true;
+        if (Array.isArray(ans) && ans.length === 0) return true;
+        if (b.type === 'matrix') {
+          // Check if all rows have an answer
+          const matrixAns = ans as Record<string, any>;
+          return b.matrixRows?.some(r => {
+            const rowAns = matrixAns[r.code];
+            if (!rowAns) return true;
+            if (typeof rowAns === 'object') return Object.keys(rowAns).length === 0;
+            return false;
+          });
+        }
+        return false;
+      });
+      if (hasUnanswered) {
+        alert('Vui lòng hoàn thành các câu hỏi bắt buộc trước khi tiếp tục.');
         return;
       }
     }
-    setCurrentBlockIndex(prev => prev + 1);
+    setCurrentPageIndex(prev => prev + 1);
+    setTimeout(() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const handlePrev = () => {
-    setCurrentBlockIndex(prev => prev - 1);
+    setCurrentPageIndex(prev => prev - 1);
+    setTimeout(() => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' }), 50);
   };
 
   const calculateScores = () => {
@@ -234,9 +295,8 @@ const SurveyRunner: React.FC = () => {
 
   if (!survey) return null;
 
-  const currentBlock = survey.blocks ? survey.blocks[currentBlockIndex] : undefined;
-  const blocksCount = survey.blocks ? survey.blocks.length : 0;
-  const isLastBlock = currentBlockIndex === blocksCount - 1;
+  const pagesCount = pages.length;
+  const isLastBlock = currentPageIndex === pagesCount - 1;
   const branding = survey.branding || { primaryColor: '#3b82f6', backgroundColor: '#f8fafc' };
   const contactBlock = survey.blocks?.find(b => b.type === 'contact');
   const contactFields = contactBlock?.contactFields || { name: true, email: true, phone: true, org: true };
@@ -261,7 +321,7 @@ const SurveyRunner: React.FC = () => {
               <span className="font-bold text-text-main tracking-tight">{globalSettings.orgName}</span>
             </div>
             <div className="text-[10px] font-bold text-text-muted uppercase tracking-widest bg-bg-main px-2 py-1 rounded">
-              {currentBlockIndex === -1 ? 'Thông tin' : `Câu ${currentBlockIndex + 1}/${blocksCount}`}
+              {currentPageIndex === -1 ? 'Thông tin' : `Phần ${currentPageIndex + 1}/${pagesCount}`}
             </div>
           </div>
         </header>
@@ -272,20 +332,28 @@ const SurveyRunner: React.FC = () => {
         <div 
           className="h-full transition-all duration-700 ease-out" 
           style={{ 
-            width: `${((currentBlockIndex + 2) / (blocksCount + 1)) * 100}%`,
+            width: `${((currentPageIndex + 2) / (pagesCount + 1)) * 100}%`,
             backgroundColor: branding.primaryColor
           }}
         />
       </div>
 
       {/* Content */}
-      <main className="flex-1 p-4 md:p-12 overflow-auto">
+      <main ref={mainRef} className="flex-1 p-4 md:p-12 overflow-auto scroll-smooth">
         <div className="max-w-3xl mx-auto">
-          {currentBlockIndex === -1 ? (
-            <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main space-y-10 animate-in fade-in zoom-in-95 duration-500">
+          <AnimatePresence mode="wait">
+            {currentPageIndex === -1 ? (
+              <motion.div 
+                key="contact-block" 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main space-y-10"
+              >
               <div className="text-center">
-                <h1 className="text-3xl font-extrabold text-text-main mb-4 tracking-tight leading-tight">{survey.name}</h1>
-                <p className="text-text-muted leading-relaxed">{survey.description}</p>
+                <h1 className="text-3xl font-extrabold text-text-main mb-4 tracking-tight leading-tight"><span>{survey.name}</span></h1>
+                <p className="text-text-muted leading-relaxed"><span>{survey.description}</span></p>
               </div>
 
               <div className="space-y-6 pt-6 border-t border-border-main/50">
@@ -347,226 +415,249 @@ const SurveyRunner: React.FC = () => {
                   )}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ) : (
-            <div className="bg-white p-10 rounded-[32px] shadow-sm border border-border-main space-y-10 animate-in fade-in slide-in-from-bottom-6 duration-500">
-              <div>
-                <h2 className="text-2xl font-bold text-text-main mb-3 leading-tight">
-                  {currentBlock.title}
-                  {currentBlock.required && <span className="text-red-500 ml-1">*</span>}
-                </h2>
-                {currentBlock.description && <p className="text-text-muted text-sm leading-relaxed">{currentBlock.description}</p>}
-                {currentBlock.helpText && <p className="text-text-muted/60 text-[11px] mt-2 italic">💡 {currentBlock.helpText}</p>}
-              </div>
+            <motion.div 
+              key={`page-${currentPageIndex}`} 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
+            >
+              {pages[currentPageIndex]?.map((currentBlock) => (
+                <div key={`block-${currentBlock.id}`} className={`bg-white p-10 shadow-sm border border-border-main space-y-8 ${currentBlock.type === 'section' ? 'rounded-3xl border-l-8 text-center' : 'rounded-[32px]'}`} style={{ borderLeftColor: currentBlock.type === 'section' ? branding.primaryColor : undefined }}>
+                  {currentBlock.type === 'section' ? (
+                    <div>
+                      <h2 className="text-3xl font-bold text-text-main mb-3 leading-tight">
+                        <span>{currentBlock.title}</span>
+                      </h2>
+                      {currentBlock.description && <p className="text-text-muted text-base leading-relaxed"><span>{currentBlock.description}</span></p>}
+                    </div>
+                  ) : (
+                    <>
+                      <div>
+                        <h2 className="text-2xl font-bold text-text-main mb-3 leading-tight">
+                          <span>{currentBlock.title}</span>
+                          {currentBlock.required && <span className="text-red-500 ml-1">*</span>}
+                        </h2>
+                        {currentBlock.description && <p className="text-text-muted text-sm leading-relaxed"><span>{currentBlock.description}</span></p>}
+                        {currentBlock.helpText && <p className="text-text-muted/60 text-[11px] mt-2 italic"><span>💡 {currentBlock.helpText}</span></p>}
+                      </div>
 
-              {/* Block Types Rendering */}
-              <div className="space-y-4">
-                {(currentBlock.type === 'single_choice' || currentBlock.type === 'likert') && (
-                  <div className="space-y-3">
-                    {currentBlock.options?.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => setResponses({ ...responses, [currentBlock.id]: opt.value })}
-                        className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
-                          responses[currentBlock.id] === opt.value
-                            ? 'border-primary bg-primary/5 text-primary font-bold'
-                            : 'border-bg-main hover:border-border-main text-text-main'
-                        }`}
-                        style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}
-                      >
-                        <span>{opt.label}</span>
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                          responses[currentBlock.id] === opt.value ? 'border-primary bg-primary' : 'border-border-main'
-                        }`} style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined, backgroundColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}>
-                          {responses[currentBlock.id] === opt.value && <div className="w-2 h-2 bg-white rounded-full" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {currentBlock.type === 'multi_choice' && (
-                  <div className="space-y-3">
-                    {currentBlock.options?.map((opt) => {
-                      const currentVals = Array.isArray(responses[currentBlock.id]) ? responses[currentBlock.id] : [];
-                      const isSelected = currentVals.includes(opt.value);
-                      return (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            const newVals = isSelected 
-                              ? currentVals.filter((v: any) => v !== opt.value)
-                              : [...currentVals, opt.value];
-                            setResponses({ ...responses, [currentBlock.id]: newVals });
-                          }}
-                          className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
-                            isSelected
-                              ? 'border-primary bg-primary/5 text-primary font-bold'
-                              : 'border-bg-main hover:border-border-main text-text-main'
-                          }`}
-                          style={{ borderColor: isSelected ? branding.primaryColor : undefined } as any}
-                        >
-                          <span>{opt.label}</span>
-                          <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
-                            isSelected ? 'border-primary bg-primary' : 'border-border-main'
-                          }`} style={{ borderColor: isSelected ? branding.primaryColor : undefined, backgroundColor: isSelected ? branding.primaryColor : undefined } as any}>
-                            {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                      {/* Block Types Rendering */}
+                      <div className="space-y-4">
+                        {(currentBlock.type === 'single_choice' || currentBlock.type === 'likert') && (
+                          <div className="space-y-3">
+                            {currentBlock.options?.map((opt) => (
+                              <button
+                                key={opt.value}
+                                onClick={() => setResponses({ ...responses, [currentBlock.id]: opt.value })}
+                                className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
+                                  responses[currentBlock.id] === opt.value
+                                    ? 'border-primary bg-primary/5 text-primary font-bold'
+                                    : 'border-bg-main hover:border-border-main text-text-main'
+                                }`}
+                                style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}
+                              >
+                                <span>{opt.label}</span>
+                                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                                  responses[currentBlock.id] === opt.value ? 'border-primary bg-primary' : 'border-border-main'
+                                }`} style={{ borderColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined, backgroundColor: responses[currentBlock.id] === opt.value ? branding.primaryColor : undefined } as any}>
+                                  {responses[currentBlock.id] === opt.value && <div className="w-2 h-2 bg-white rounded-full" />}
+                                </div>
+                              </button>
+                            ))}
                           </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
+                        )}
 
-                {currentBlock.type === 'matrix' && (
-                  <div className="overflow-x-auto -mx-10 px-10">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr>
-                          <th className="p-4 text-left bg-bg-main/50 rounded-tl-2xl"></th>
-                          {currentBlock.matrixCols?.map((col) => (
-                            <th key={col.value} className="p-4 text-center bg-bg-main/50 text-[10px] font-bold text-text-muted uppercase tracking-widest last:rounded-tr-2xl">
-                              {col.label}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentBlock.matrixRows?.map((row) => (
-                          <tr key={row.code} className="border-b border-border-main/50 last:border-0">
-                            <td className="p-4 text-sm font-bold text-text-main">{row.label}</td>
-                            {currentBlock.matrixCols?.map((col) => {
-                              const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
-                                                (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
-                              const colType = col.type || 'single_choice';
-
+                        {currentBlock.type === 'multi_choice' && (
+                          <div className="space-y-3">
+                            {currentBlock.options?.map((opt) => {
+                              const currentVals = Array.isArray(responses[currentBlock.id]) ? responses[currentBlock.id] : [];
+                              const isSelected = currentVals.includes(opt.value);
                               return (
-                                <td key={col.value} className="p-4 text-center">
-                                  {colType === 'single_choice' && (
-                                    <button
-                                      onClick={() => {
-                                        const currentMatrix = responses[currentBlock.id] || {};
-                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                        
-                                        // Clear other single_choice columns in this row
-                                        currentBlock.matrixCols?.forEach(c => {
-                                          if ((c.type || 'single_choice') === 'single_choice') {
-                                            delete currentRowData[c.value];
-                                          }
-                                        });
-                                        
-                                        currentRowData[col.value] = true;
-
-                                        setResponses({ 
-                                          ...responses, 
-                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                        });
-                                      }}
-                                      className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
-                                        cellValue === true
-                                          ? 'border-primary bg-primary'
-                                          : 'border-border-main hover:border-primary/50'
-                                      }`}
-                                      style={{ 
-                                        borderColor: cellValue === true ? branding.primaryColor : undefined,
-                                        backgroundColor: cellValue === true ? branding.primaryColor : undefined
-                                      } as any}
-                                    >
-                                      {cellValue === true && <div className="w-2 h-2 bg-white rounded-full" />}
-                                    </button>
-                                  )}
-                                  {colType === 'multi_choice' && (
-                                    <button
-                                      onClick={() => {
-                                        const currentMatrix = responses[currentBlock.id] || {};
-                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                        
-                                        if (currentRowData[col.value]) {
-                                          delete currentRowData[col.value];
-                                        } else {
-                                          currentRowData[col.value] = true;
-                                        }
-
-                                        setResponses({ 
-                                          ...responses, 
-                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                        });
-                                      }}
-                                      className={`w-6 h-6 rounded border-2 mx-auto transition-all flex items-center justify-center ${
-                                        cellValue === true
-                                          ? 'border-primary bg-primary'
-                                          : 'border-border-main hover:border-primary/50'
-                                      }`}
-                                      style={{ 
-                                        borderColor: cellValue === true ? branding.primaryColor : undefined,
-                                        backgroundColor: cellValue === true ? branding.primaryColor : undefined
-                                      } as any}
-                                    >
-                                      {cellValue === true && <CheckCircle2 size={14} className="text-white" />}
-                                    </button>
-                                  )}
-                                  {colType === 'text' && (
-                                    <input
-                                      type="text"
-                                      value={cellValue as string || ''}
-                                      onChange={(e) => {
-                                        const currentMatrix = responses[currentBlock.id] || {};
-                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                        currentRowData[col.value] = e.target.value;
-                                        setResponses({ 
-                                          ...responses, 
-                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
-                                      placeholder="Nhập..."
-                                    />
-                                  )}
-                                  {colType === 'number' && (
-                                    <input
-                                      type="number"
-                                      value={cellValue as string || ''}
-                                      onChange={(e) => {
-                                        const currentMatrix = responses[currentBlock.id] || {};
-                                        const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
-                                        currentRowData[col.value] = e.target.value;
-                                        setResponses({ 
-                                          ...responses, 
-                                          [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
-                                        });
-                                      }}
-                                      className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
-                                      placeholder="0"
-                                    />
-                                  )}
-                                </td>
+                                <button
+                                  key={opt.value}
+                                  onClick={() => {
+                                    const newVals = isSelected 
+                                      ? currentVals.filter((v: any) => v !== opt.value)
+                                      : [...currentVals, opt.value];
+                                    setResponses({ ...responses, [currentBlock.id]: newVals });
+                                  }}
+                                  className={`w-full p-5 text-left rounded-2xl border-2 transition-all flex items-center justify-between group ${
+                                    isSelected
+                                      ? 'border-primary bg-primary/5 text-primary font-bold'
+                                      : 'border-bg-main hover:border-border-main text-text-main'
+                                  }`}
+                                  style={{ borderColor: isSelected ? branding.primaryColor : undefined } as any}
+                                >
+                                  <span>{opt.label}</span>
+                                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                    isSelected ? 'border-primary bg-primary' : 'border-border-main'
+                                  }`} style={{ borderColor: isSelected ? branding.primaryColor : undefined, backgroundColor: isSelected ? branding.primaryColor : undefined } as any}>
+                                    {isSelected && <CheckCircle2 size={14} className="text-white" />}
+                                  </div>
+                                </button>
                               );
                             })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                          </div>
+                        )}
 
-                {currentBlock.type === 'text' && (
-                  <textarea
-                    value={responses[currentBlock.id] || ''}
-                    onChange={(e) => setResponses({ ...responses, [currentBlock.id]: e.target.value })}
-                    className="w-full p-5 bg-bg-main border border-border-main rounded-[24px] focus:ring-2 outline-none min-h-[180px] transition-all"
-                    style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
-                    placeholder={currentBlock.placeholder || 'Nhập câu trả lời của bạn...'}
-                  />
-                )}
+                        {currentBlock.type === 'matrix' && (
+                          <div className="overflow-x-auto -mx-10 px-10">
+                            <table className="w-full border-collapse">
+                              <thead>
+                                <tr>
+                                  <th className="p-4 text-left bg-bg-main/50 rounded-tl-2xl"></th>
+                                  {currentBlock.matrixCols?.map((col) => (
+                                    <th key={col.value} className="p-4 text-center bg-bg-main/50 text-[10px] font-bold text-text-muted uppercase tracking-widest last:rounded-tr-2xl">
+                                      {col.label}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {currentBlock.matrixRows?.map((row) => (
+                                  <tr key={row.code} className="border-b border-border-main/50 last:border-0">
+                                    <td className="p-4 text-sm font-bold text-text-main">{row.label}</td>
+                                    {currentBlock.matrixCols?.map((col) => {
+                                      const cellValue = responses[currentBlock.id]?.[row.code]?.[col.value] || 
+                                                        (responses[currentBlock.id]?.[row.code] === col.value ? true : '');
+                                      const colType = col.type || 'single_choice';
 
-                {currentBlock.type === 'content' && (
-                  <div className="prose prose-blue max-w-none text-text-muted leading-relaxed bg-bg-main p-6 rounded-2xl border border-border-main border-dashed">
-                    {currentBlock.description}
-                  </div>
-                )}
-              </div>
-            </div>
+                                      return (
+                                        <td key={col.value} className="p-4 text-center">
+                                          {colType === 'single_choice' && (
+                                            <button
+                                              onClick={() => {
+                                                const currentMatrix = responses[currentBlock.id] || {};
+                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                
+                                                // Clear other single_choice columns in this row
+                                                currentBlock.matrixCols?.forEach(c => {
+                                                  if ((c.type || 'single_choice') === 'single_choice') {
+                                                    delete currentRowData[c.value];
+                                                  }
+                                                });
+                                                
+                                                currentRowData[col.value] = true;
+
+                                                setResponses({ 
+                                                  ...responses, 
+                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                });
+                                              }}
+                                              className={`w-6 h-6 rounded-full border-2 mx-auto transition-all flex items-center justify-center ${
+                                                cellValue === true
+                                                  ? 'border-primary bg-primary'
+                                                  : 'border-border-main hover:border-primary/50'
+                                              }`}
+                                              style={{ 
+                                                borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                                backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                              } as any}
+                                            >
+                                              {cellValue === true && <div className="w-2 h-2 bg-white rounded-full" />}
+                                            </button>
+                                          )}
+                                          {colType === 'multi_choice' && (
+                                            <button
+                                              onClick={() => {
+                                                const currentMatrix = responses[currentBlock.id] || {};
+                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                
+                                                if (currentRowData[col.value]) {
+                                                  delete currentRowData[col.value];
+                                                } else {
+                                                  currentRowData[col.value] = true;
+                                                }
+
+                                                setResponses({ 
+                                                  ...responses, 
+                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                });
+                                              }}
+                                              className={`w-6 h-6 rounded border-2 mx-auto transition-all flex items-center justify-center ${
+                                                cellValue === true
+                                                  ? 'border-primary bg-primary'
+                                                  : 'border-border-main hover:border-primary/50'
+                                              }`}
+                                              style={{ 
+                                                borderColor: cellValue === true ? branding.primaryColor : undefined,
+                                                backgroundColor: cellValue === true ? branding.primaryColor : undefined
+                                              } as any}
+                                            >
+                                              {cellValue === true && <CheckCircle2 size={14} className="text-white" />}
+                                            </button>
+                                          )}
+                                          {colType === 'text' && (
+                                            <input
+                                              type="text"
+                                              value={cellValue as string || ''}
+                                              onChange={(e) => {
+                                                const currentMatrix = responses[currentBlock.id] || {};
+                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                currentRowData[col.value] = e.target.value;
+                                                setResponses({ 
+                                                  ...responses, 
+                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                });
+                                              }}
+                                              className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                              placeholder="Nhập..."
+                                            />
+                                          )}
+                                          {colType === 'number' && (
+                                            <input
+                                              type="number"
+                                              value={cellValue as string || ''}
+                                              onChange={(e) => {
+                                                const currentMatrix = responses[currentBlock.id] || {};
+                                                const currentRowData = typeof currentMatrix[row.code] === 'object' ? { ...currentMatrix[row.code] } : {};
+                                                currentRowData[col.value] = e.target.value;
+                                                setResponses({ 
+                                                  ...responses, 
+                                                  [currentBlock.id]: { ...currentMatrix, [row.code]: currentRowData } 
+                                                });
+                                              }}
+                                              className="w-full px-3 py-2 bg-bg-main border border-border-main rounded-xl text-sm focus:border-primary outline-none"
+                                              placeholder="0"
+                                            />
+                                          )}
+                                        </td>
+                                      );
+                                    })}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+
+                        {currentBlock.type === 'text' && (
+                          <textarea
+                            value={responses[currentBlock.id] || ''}
+                            onChange={(e) => setResponses({ ...responses, [currentBlock.id]: e.target.value })}
+                            className="w-full p-5 bg-bg-main border border-border-main rounded-[24px] focus:ring-2 outline-none min-h-[180px] transition-all"
+                            style={{ '--tw-ring-color': branding.primaryColor + '33' } as any}
+                            placeholder={currentBlock.placeholder || 'Nhập câu trả lời của bạn...'}
+                          />
+                        )}
+
+                        {currentBlock.type === 'content' && (
+                          <div className="prose prose-blue max-w-none text-text-muted leading-relaxed bg-bg-main p-6 rounded-2xl border border-border-main border-dashed">
+                            <span>{currentBlock.description}</span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </motion.div>
           )}
+          </AnimatePresence>
         </div>
       </main>
 
@@ -575,7 +666,7 @@ const SurveyRunner: React.FC = () => {
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <button
             onClick={handlePrev}
-            disabled={currentBlockIndex === -1}
+            disabled={currentPageIndex === -1}
             className="flex items-center gap-2 px-8 py-4 text-text-muted font-bold disabled:opacity-0 hover:text-text-main transition-all"
           >
             <ChevronLeft size={20} />
